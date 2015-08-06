@@ -4,6 +4,18 @@
  *  Author: Carlo Innocenti
  *  Date: 2014-04-04
  */
+
+// Automatically generated. Make future change here.
+definition(
+    name: "Unresponsive devices monitor",
+    namespace: "",
+    author: "Carlo Innocenti",
+    description: "Check for unresponsive devices",
+    category: "My Apps",
+    iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
+    iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience%402x.png",
+    iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience%402x.png")
+
 preferences {
 	section("When device is unresponsive") {
     	input "devices", "capability.polling", title:"Pollable device", multiple: true

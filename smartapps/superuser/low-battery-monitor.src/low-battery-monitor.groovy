@@ -4,6 +4,18 @@
  *  Author: t@hw.sg
  *  Date: 2013-10-19
  */
+
+// Automatically generated. Make future change here.
+definition(
+    name: "Low battery monitor",
+    namespace: "",
+    author: "minollo@minollo.com",
+    description: "Low battery monitor",
+    category: "My Apps",
+    iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
+    iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience%402x.png",
+    iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience%402x.png")
+
 preferences {
 	section("When battery drops below") {
     	input "devices", "capability.battery", title:"Battery Operated Devices", multiple: true

@@ -1,3 +1,14 @@
+// Automatically generated. Make future change here.
+definition(
+    name: "Handle Foscam",
+    namespace: "",
+    author: "minollo@minollo.com",
+    description: "Handle Foscam",
+    category: "My Apps",
+    iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
+    iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience%402x.png",
+    iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience%402x.png")
+
 preferences {
 	section("Away mode") {
         input "awayMode", "mode", title: "Away mode"
