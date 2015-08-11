@@ -459,14 +459,17 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv3.SensorMultilevelR
             def cmdScale = cmd.scale == 1 ? "F" : "C"
             // converTemp returns string with two decimal places
             // convert to double then to int to drop the decimal
-            map.value = convertTemperatureIfNeeded(cmd.scaledSensorValue, cmdScale).toDouble()
-            map.unit = getTemperatureScale()
-            map.name = "temperature"
-            // Send event to set ShortName + Temp tile
-            def shortNameVal = shortName == null ? "ZXT-120" : shortName
-            def tempName = shortNameVal + " " + map.value + "°"
-            log.debug "Sensor Reporting temperatureName $tempName"
-            sendEvent("name":"temperatureName", "value":tempName)
+            def value = convertTemperatureIfNeeded(cmd.scaledSensorValue, cmdScale).toDouble()
+            if (value <= 95.0) {	//ignore spurious reports
+                map.value = value
+                map.unit = getTemperatureScale()
+                map.name = "temperature"
+                // Send event to set ShortName + Temp tile
+                def shortNameVal = shortName == null ? "ZXT-120" : shortName
+                def tempName = shortNameVal + " " + map.value + "°"
+                log.debug "Sensor Reporting temperatureName $tempName"
+                sendEvent("name":"temperatureName", "value":tempName)
+            }
             break;
         default:
             log.warn "Unknown sensorType reading from device"
