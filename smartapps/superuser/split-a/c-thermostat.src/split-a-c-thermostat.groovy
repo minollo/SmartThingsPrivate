@@ -92,18 +92,22 @@ def temperatureHandler(evt)
 def outsideTemperatureHandler(evt)
 {
 	log.debug "Outside temperature: $evt.value, $settings; thermostatMode == ${thermostat.currentValue("thermostatMode")}"
-    if (mode == "cool" && toDouble(evt.value) < toDouble(minExternalTempForCool) && thermostat.currentValue("thermostatMode") != "off") {
+    if (mode == "cool" && toDouble(evt.value) < (toDouble(minExternalTempForCool)) && thermostat.currentValue("thermostatMode") != "off") {
     	log.info "Outside temperature below minimum set temperature; shutting down unit"
         thermostat.off()
+        thermostat.poll()
     } else if (mode == "heat" && toDouble(evt.value) > toDouble(maxExternalTempForHeat) && thermostat.currentValue("thermostatMode") != "off") {
     	log.info "Outside temperature above maximum set temperature; shutting down unit"
         thermostat.off()
-    } else if (mode == "cool" && toDouble(evt.value) >= toDouble(minExternalTempForCool) && thermostat.currentValue("thermostatMode") == "off") {
+        thermostat.poll()
+    } else if (mode == "cool" && toDouble(evt.value) >= (toDouble(minExternalTempForCool) + 1) && thermostat.currentValue("thermostatMode") == "off") {
     	log.info "Outside temperature in working range; resuming unit to cool"
         thermostat.on()
-    } else if (mode == "heat" && toDouble(evt.value) <= toDouble(maxExternalTempForHeat) && thermostat.currentValue("thermostatMode") == "off") {
+        thermostat.poll()
+    } else if (mode == "heat" && toDouble(evt.value) <= (toDouble(maxExternalTempForHeat) - 1) && thermostat.currentValue("thermostatMode") == "off") {
     	log.info "Outside temperature in working range; resuming unit to heat"
         thermostat.on()
+        thermostat.poll()
     }
 }
 
