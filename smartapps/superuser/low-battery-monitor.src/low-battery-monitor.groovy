@@ -68,7 +68,7 @@ def updateBatteryStatus() {
                 state.lowBattNoticeSent[(device.id)] = true            	
             }
             else {
-                if (state.lowBattNoticeSent.containsKey(device.id)) {
+                if (state.lowBattNoticeSent.containsKey(device.id) && device.currentBattery > 40) {
                     log.debug "Device '${device.displayName}' is back at a good battery level: '${device.currentBattery}' >= '${level}'"
                     state.lowBattNoticeSent.remove(device.id)
                 }
