@@ -89,7 +89,7 @@ def initialize() {
 def pollerEvent(evt) {
 	log.debug "[PollerEvent]"
     if (state.keepAliveLatest && now() - state.keepAliveLatest > 450000) {
-    	log.info "Waking up timer"
+    	log.error "Waking up timer"
     	timeMonitor()
     }
 }

@@ -64,7 +64,7 @@ def updated()
 def pollerEvent(evt) {
 	log.debug "[PollerEvent]"
     if (state.keepAliveLatest && now() - state.keepAliveLatest > 900000) {
-    	log.info "Waking up timer"
+    	log.error "Waking up timer"
     	keepAlive()
     }
 }
@@ -92,8 +92,8 @@ def temperatureHandler(evt)
 def outsideTemperatureHandler(evt)
 {
 	log.debug "Outside temperature: $evt.value, $settings; thermostatMode == ${thermostat.currentValue("thermostatMode")}"
-    if (state.lastChangeTime && (now() - state.lastChangeTime) < 300000) {	//no more than one change every 5 minutes
-    	log.warn "Ignoring event as state was changed less than 5 minutes ago"
+    if (state.lastChangeTime && (now() - state.lastChangeTime) < 3600000) {	//no more than one change every hour
+    	log.warn "Ignoring event as state was changed less than one hour ago"
     } else if (mode == "cool" && toDouble(evt.value) < (toDouble(minExternalTempForCool)) && thermostat.currentValue("thermostatMode") != "off") {
     	log.info "Outside temperature below minimum set temperature; shutting down unit"
         state.lastChangeTime = now()

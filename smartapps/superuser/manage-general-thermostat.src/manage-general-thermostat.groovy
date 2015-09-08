@@ -1,8 +1,3 @@
-/**
- *  Keep Me Cozy
- *
- *  Author: SmartThings
- */
 
 // Automatically generated. Make future change here.
 definition(
@@ -230,8 +225,9 @@ def doUpdateTempSettings()
 
 def pollerEvent(evt) {
 	log.debug "[PollerEvent]"
+    log.debug "[PollerEvent] keepAliveLatest == ${state.keepAliveLatest}; now() == ${now()}"
     if (state.keepAliveLatest && now() - state.keepAliveLatest > 450000) {
-    	log.info "Waking up timer"
+    	log.error "Waking up timer"
     	keepAlive()
     }
 }
@@ -250,8 +246,10 @@ def appTouch(evt)
 def keepAlive()
 {
 	log.debug "Polling"
-    runIn(300, keepAlive)
+    runIn(300, keepAlive, [overwrite: true])
+    log.debug "[Polling] keepAliveLatest == ${state.keepAliveLatest}"
     state.keepAliveLatest = now()
+    log.debug "[Polling] keepAliveLatest == ${state.keepAliveLatest}; now() == ${now()}"
     thermostat.poll()
     if (!state.latestMode || state.latestMode != location.mode) {
 		log.debug "[Main Thermostat]: Mode has changed; update settings"

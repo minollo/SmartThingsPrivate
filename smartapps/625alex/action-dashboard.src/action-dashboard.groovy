@@ -306,7 +306,7 @@ def getURL(e) {
         log.debug "Creating new Access Token: $state.accessToken"
     }
 	
-	def url1 = "https://graph.api.smartthings.com/api/smartapps/installations/${app.id}/ui"
+	def url1 = getApiServerUrl() + "/api/smartapps/installations/${app.id}/ui"
     def url2 = "?access_token=${state.accessToken}"
     log.debug "${title ?: location.name} ActiON Dashboard URL: $url1$url2"
     if (phone) {

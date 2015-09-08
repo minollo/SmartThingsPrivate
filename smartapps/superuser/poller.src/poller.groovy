@@ -42,21 +42,21 @@ def initialize() {
 	unschedule()
 	//schedule("0 0/${interval} * * * ?", poll)
     //runEvery5Minutes(poll)
-    runIn(300, poll)
+    runIn(180, poll)
     if (pollerDevice) subscribe(pollerDevice, "battery", pollerEvent)
     subscribe(app, appTouch)
 }
 
 def pollerEvent(evt) {
 	log.debug "[PollerEvent]"
-    if (state.keepAliveLatest && now() - state.keepAliveLatest > 450000) {
-    	log.info "Waking up timer"
+    if (state.keepAliveLatest && now() - state.keepAliveLatest > 270000) {
+    	log.error "Waking up timer"
     	poll()
     }
 }
 def poll() {
 	log.info "Polling"
-    runIn(300, poll)
+    runIn(180, poll)
     state.keepAliveLatest = now()
 	devices.poll()
 }

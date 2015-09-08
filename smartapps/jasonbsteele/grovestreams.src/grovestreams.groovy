@@ -70,14 +70,13 @@ def initialize() {
     subscribe(alarms, "alarmStatus", handleAlarmStatusEvent)
     if (pollerDevice) subscribe(pollerDevice, "battery", pollerEvent)
 	subscribe(app, appTouch)
-    //runEvery10Minutes(processQueue)
     runIn(600, processQueue)
 }
 
 def pollerEvent(evt) {
 	log.debug "[PollerEvent]"
     if (state.keepAliveLatest && now() - state.keepAliveLatest > 900000) {
-    	log.info "Waking up timer"
+    	log.error "Waking up timer"
     	processQueue()
     }
 }
