@@ -54,13 +54,21 @@ private updateState(mode) {
 	log.debug "updateState(${mode})"
     unschedule(checkAlarmCommand)
 	if (mode == awayMode) {
-    	alarm.alarmOn()
-        state.requested = "away"
-        runIn(400, checkAlarmCommand)
+    	if (alarm.currentValue("enabled") == "true") {
+            alarm.alarmOn()
+            state.requested = "away"
+            runIn(400, checkAlarmCommand)
+        } else {
+        	log.info("Ignoring mode change; alarm is disabled")
+        }
     } else if (sleepAlarmMode && mode == sleepAlarmMode && everyoneIsPresent()) {
-    	alarm.alarmStay()
-        state.requested = "stay"
-        runIn(400, checkAlarmCommand)
+    	if (alarm.currentValue("enabled") == "true") {
+            alarm.alarmStay()
+            state.requested = "stay"
+            runIn(400, checkAlarmCommand)
+        } else {
+        	log.info("Ignoring mode change; alarm is disabled")
+        }
     } else {
     	alarm.alarmOff()
         state.requested = "off"
