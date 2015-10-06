@@ -99,10 +99,10 @@ def timeMonitor() {
     runIn(300, timeMonitor)
     state.keepAliveLatest = now()
 //	shouldWater()
+    def nowTime = now()
 	if (sprinklersEnabled && state.running == false) {
     	def startTime
         def startDate
-        def nowTime = now()
         if (enabledStartTime1) {
         	startDate = timeToday(startTime1, location.timeZone)
         	startTime = startDate.getTime()
@@ -127,15 +127,46 @@ def timeMonitor() {
         }
 	} else {
     	log.debug "sprinklersEnabled = ${sprinklersEnabled}; state.running = ${state.running}"
+        if (state.running && (state.lastRunTime == null || nowTime - state.lastRunTime > 120 * 60 * 1000)) {	//state.running seems off; reset it and make sure everything is off
+        	log.warn "state.running seems off; resetting it and making sure everything is off"
+            state.running = false
+            sprinkler1?.off()
+            sprinkler2?.off()
+            sprinkler3?.off()
+            sprinkler4?.off()
+        }
     }
 }
 
+
+def waitForUpdate(device, endState) {
+	log.debug "About to check $device for $endState"
+    pause(1000)
+	if (device && endState) {
+    	for (def i = 0; i < 5 ; i++ ) {
+            if (device.currentValue("switch").toString() == endState) {
+            	log.debug "Device ${device} is indeed ${endState}"
+            	return true
+            } else {
+            	log.debug "Checking #$i, expected $device to be $endState but was ${device.currentValue("switch")}"
+                if (endState == "on")
+                	device.on()
+                else
+                	device.off()
+            	pause(2000)
+            }
+        }
+    }
+    return false
+}
 
 def startSprinkler1(bForce) {
 	if (bForce || shouldWater()) {
         log.info "Turning on Sprinker 1 for ${time1} minutes"
         state.running = true
         sprinkler1.on()
+        waitForUpdate(sprinkler1, "on")
+        state.lastRunTime = now()
         def nowTime = now()
         def theDate = new Date(nowTime + (time1 * 60 * 1000))
         runOnce(theDate, stopSprinkler1)
@@ -148,13 +179,17 @@ def startSprinkler1(bForce) {
 
 def stopSprinkler1() {
 	log.info "Stopping Sprinkler 1"
+    state.running = true
 	sprinkler1.off()
+    waitForUpdate(sprinkler1, "off")
 }
 
 def startSprinkler2(evt) {
 	if (state.running == true) {
         log.info "Turning on Sprinker 2 for ${time2} minutes"
+	    unschedule(stopSprinkler1)
         sprinkler2.on()
+        waitForUpdate(sprinkler2, "on")
         def nowTime = now()
         def theDate = new Date(nowTime + (time2 * 60 * 1000))
         runOnce(theDate, stopSprinkler2)
@@ -163,13 +198,17 @@ def startSprinkler2(evt) {
 
 def stopSprinkler2() {
 	log.info "Stopping Sprinkler 2"
+    state.running = true
 	sprinkler2.off()
+    waitForUpdate(sprinkler2, "off")
 }
 
 def startSprinkler3(evt) {
+	unschedule(stopSprinkler2)
 	if (state.running == true && sprinkler3) {
 		log.info "Turning on Sprinker 3 for ${time3} minutes"
         sprinkler3.on()
+	    waitForUpdate(sprinkler3, "on")
         def nowTime = now()
         def theDate = new Date(nowTime + (time3 * 60 * 1000))
         runOnce(theDate, stopSprinkler3)
@@ -182,7 +221,9 @@ def startSprinkler3(evt) {
 def stopSprinkler3() {
 	log.info "Stopping Sprinkler 3"
 	if (sprinkler3) {
+	    state.running = true
 		sprinkler3.off()
+	    waitForUpdate(sprinkler3, "off")
     } else {
     	state.running = false
         globalSwitch.off()
@@ -190,9 +231,11 @@ def stopSprinkler3() {
 }
 
 def startSprinkler4(evt) {
+	unschedule(stopSprinkler3)
 	if (state.running == true && sprinkler4) {
 		log.info "Turning on Sprinker 4 for ${time4} minutes"
         sprinkler4.on()
+	    waitForUpdate(sprinkler4, "on")
         def nowTime = now()
         def theDate = new Date(nowTime + (time4 * 60 * 1000))
         runOnce(theDate, stopSprinkler4)
@@ -205,7 +248,9 @@ def startSprinkler4(evt) {
 def stopSprinkler4() {
 	log.info "Stopping Sprinkler 4"
 	if (sprinkler4) {
+	    state.running = true
 		sprinkler4.off()
+	    waitForUpdate(sprinkler4, "off")
     }
     state.running = false
     globalSwitch.off()
