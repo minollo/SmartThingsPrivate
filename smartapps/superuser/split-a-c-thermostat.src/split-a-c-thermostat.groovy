@@ -16,7 +16,8 @@ preferences {
 		input "thermostat", "capability.thermostat"
 	}
 	section("Temperature control") {
-		input "mode", "enum", metadata:[values:['cool', 'heat', 'off']], required: true
+        input "appEnabled", "bool", title: "Enabled?", required: true
+        input "mode", "enum", metadata:[values:['cool', 'heat', 'off']], required: true
         input "outsideTemperature", "capability.temperatureMeasurement", title: "Outside Temperature", required:false
 		input "heatingSetpoint", "number", title: "Heating temp (F)?", required: true
         input "maxExternalTempForHeat", "number", title: "Maximum outside temp for heating (F)?"
@@ -91,30 +92,32 @@ def temperatureHandler(evt)
 
 def outsideTemperatureHandler(evt)
 {
-	log.debug "Outside temperature: $evt.value, $settings; thermostatMode == ${thermostat.currentValue("thermostatMode")}"
-    if (state.lastChangeTime && (now() - state.lastChangeTime) < 3600000) {	//no more than one change every hour
-    	log.warn "Ignoring event as state was changed less than one hour ago"
-    } else if (mode == "cool" && toDouble(evt.value) < (toDouble(minExternalTempForCool)) && thermostat.currentValue("thermostatMode") != "off") {
-    	log.info "Outside temperature below minimum set temperature; shutting down unit"
-        state.lastChangeTime = now()
-        thermostat.off()
-        thermostat.poll()
-    } else if (mode == "heat" && toDouble(evt.value) > toDouble(maxExternalTempForHeat) && thermostat.currentValue("thermostatMode") != "off") {
-    	log.info "Outside temperature above maximum set temperature; shutting down unit"
-        state.lastChangeTime = now()
-        thermostat.off()
-        thermostat.poll()
-    } else if (mode == "cool" && toDouble(evt.value) >= (toDouble(minExternalTempForCool) + 1) && thermostat.currentValue("thermostatMode") == "off") {
-    	log.info "Outside temperature in working range; resuming unit to cool"
-        state.lastChangeTime = now()
-        thermostat.on()
-        thermostat.poll()
-    } else if (mode == "heat" && toDouble(evt.value) <= (toDouble(maxExternalTempForHeat) - 1) && thermostat.currentValue("thermostatMode") == "off") {
-    	log.info "Outside temperature in working range; resuming unit to heat"
-        state.lastChangeTime = now()
-        thermostat.on()
-        thermostat.poll()
-    }
+	if(appEnabled) {
+        log.debug "Outside temperature: $evt.value, $settings; thermostatMode == ${thermostat.currentValue("thermostatMode")}"
+        if (state.lastChangeTime && (now() - state.lastChangeTime) < 3600000) {	//no more than one change every hour
+            log.warn "Ignoring event as state was changed less than one hour ago"
+        } else if (mode == "cool" && toDouble(evt.value) < (toDouble(minExternalTempForCool)) && thermostat.currentValue("thermostatMode") != "off") {
+            log.info "Outside temperature below minimum set temperature; shutting down unit"
+            state.lastChangeTime = now()
+            thermostat.off()
+            thermostat.poll()
+        } else if (mode == "heat" && toDouble(evt.value) > toDouble(maxExternalTempForHeat) && thermostat.currentValue("thermostatMode") != "off") {
+            log.info "Outside temperature above maximum set temperature; shutting down unit"
+            state.lastChangeTime = now()
+            thermostat.off()
+            thermostat.poll()
+        } else if (mode == "cool" && toDouble(evt.value) >= (toDouble(minExternalTempForCool) + 1) && thermostat.currentValue("thermostatMode") == "off") {
+            log.info "Outside temperature in working range; resuming unit to cool"
+            state.lastChangeTime = now()
+            thermostat.on()
+            thermostat.poll()
+        } else if (mode == "heat" && toDouble(evt.value) <= (toDouble(maxExternalTempForHeat) - 1) && thermostat.currentValue("thermostatMode") == "off") {
+            log.info "Outside temperature in working range; resuming unit to heat"
+            state.lastChangeTime = now()
+            thermostat.on()
+            thermostat.poll()
+        }
+	}
 }
 
 def thermostatModeHandler(evt)
@@ -130,25 +133,27 @@ def changedLocationMode(evt)
 
 def doUpdateTempSettings(currentMode)
 {
-	log.debug "doUpdateTempSettings; currentMode == ${currentMode}"
-    def tMode = thermostat.currentValue("thermostatMode")
-    log.debug "Thermostat Mode is '${tMode}'"
-    if (mode == "cool") {
-    	log.debug "Setting to cool at ${coolingSetpoint}F"
-        if (tMode == "off") thermostat.on()
-        thermostat.setCoolingSetpoint(coolingSetpoint)
-//    	thermostat.cool()
-    } else if (mode == "heat") {
-    	log.debug "Setting to heat at ${heatingSetpoint}F"
-        if (tMode == "off") thermostat.on()
-        thermostat.setHeatingSetpoint(heatingSetpoint)
-//        thermostat.heat()
-    } else {
-        if (tMode != "off") {
-            log.debug "Shutting down"
-            thermostat.off()
+	if(appEnabled) {
+        log.debug "doUpdateTempSettings; currentMode == ${currentMode}"
+        def tMode = thermostat.currentValue("thermostatMode")
+        log.debug "Thermostat Mode is '${tMode}'"
+        if (mode == "cool") {
+            log.debug "Setting to cool at ${coolingSetpoint}F"
+            if (tMode == "off") thermostat.on()
+            thermostat.setCoolingSetpoint(coolingSetpoint)
+    //    	thermostat.cool()
+        } else if (mode == "heat") {
+            log.debug "Setting to heat at ${heatingSetpoint}F"
+            if (tMode == "off") thermostat.on()
+            thermostat.setHeatingSetpoint(heatingSetpoint)
+    //        thermostat.heat()
+        } else {
+            if (tMode != "off") {
+                log.debug "Shutting down"
+                thermostat.off()
+            }
         }
-    }
+	}
 }
 
 def appTouch(evt)
