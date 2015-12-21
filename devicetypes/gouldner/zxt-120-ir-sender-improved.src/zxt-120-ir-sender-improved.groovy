@@ -464,6 +464,7 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv3.SensorMultilevelR
                 map.value = value
                 map.unit = getTemperatureScale()
                 map.name = "temperature"
+                map.isStateChange = true
                 // Send event to set ShortName + Temp tile
                 def shortNameVal = shortName == null ? "ZXT-120" : shortName
                 def tempName = shortNameVal + " " + map.value + "°"
