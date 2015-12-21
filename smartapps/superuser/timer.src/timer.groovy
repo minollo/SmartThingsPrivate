@@ -63,24 +63,36 @@ def pollerEvent(evt) {
     	log.error "Waking up timer"
     	timeMonitor()
     }
+    if (state.checkOnScheduledAt && (now() - state.checkOnScheduledAt) > 60 * 1000) {
+    	log.error "Waking up checkOn timer"
+        checkOn()
+    }
+    if (state.checkOffScheduledAt && (now() - state.checkOffScheduledAt) > 60 * 1000) {
+    	log.error "Waking up checkOff timer"
+        checkOff()
+    }
 }
 
 def checkOn() {
+    state.checkOnScheduledAt = null
 	def switchesAreOn = (switches[0].currentValue("switch") == "on")
    	log.debug "checkOn: switches are ${switchesAreOn ? "on" : "off"}"
     if (!switchesAreOn) {
         log.info "Switching switches ON again..."
         switches.on()
+        state.checkOnScheduledAt = now() + 60 * 1000
         runIn(60, checkOn)
    	}
 }
 
 def checkOff() {
+    state.checkOffScheduledAt = null
 	def switchesAreOn = (switches[0].currentValue("switch") == "on")
    	log.debug "checkOff: switches are ${switchesAreOn ? "on" : "off"}"
     if (switchesAreOn) {
         log.info "Switching switches OFF again..."
         switches.off()
+        state.checkOffScheduledAt = now() + 60 * 1000
         runIn(60, checkOff)
    	}
 }
@@ -94,8 +106,6 @@ def timeMonitor() {
     def nowTime = now()
     def switchesAreOn = (switches[0].currentValue("switch") == "on")
     log.debug "Switches are ${switchesAreOn ? "on" : "off"}; manualOn == ${state.manualOn}; manualOff == ${state.manualOff}"
-    unschedule(checkOn)
-    unschedule(checkOff)
 
     if (timeOffAt2 && enabled2) {
         checkDate = timeToday(timeOffAt2, location.timeZone)
@@ -107,6 +117,7 @@ def timeMonitor() {
             if (switchesAreOn && state.manualOn == false) {
         		log.info "Switching off switches (${checkDate})"
                 switches.off()
+		        state.checkOffScheduledAt = now() + 60 * 1000
                 runIn(60, checkOff)
             }
         } else {
@@ -119,6 +130,7 @@ def timeMonitor() {
                 if (!switchesAreOn && state.manualOff == false) {
 	        		log.info "Switching on switches (${checkDate})"
                     switches.on()
+			        state.checkOnScheduledAt = now() + 60 * 1000
 	                runIn(60, checkOn)
                 }
             }
@@ -134,6 +146,7 @@ def timeMonitor() {
             if (switchesAreOn && state.manualOn == false) {
         		log.info "Switching off switches (${checkDate})"
                 switches.off()
+		        state.checkOffScheduledAt = now() + 60 * 1000
                 runIn(60, checkOff)
             }
         } else {
@@ -146,6 +159,7 @@ def timeMonitor() {
                 if (!switchesAreOn && state.manualOff == false) {
 	        		log.info "Switching on switches (${checkDate})"
                     switches.on()
+			        state.checkOnScheduledAt = now() + 60 * 1000
 	                runIn(60, checkOn)
                 }
             }
@@ -156,10 +170,12 @@ def timeMonitor() {
             state.manualOff = false
 			log.info "Switching off switches (no previous timer events found for the day)"
             switches.off()
+	        state.checkOffScheduledAt = now() + 60 * 1000
             runIn(60, checkOff)
         } else if (!switchesAreOn && state.manualOn == true) {
 	        log.info "Switching switches ON again..."
             switches.on()
+	        state.checkOnScheduledAt = now() + 60 * 1000
             runIn(60, checkOn)
         }
     }
@@ -177,11 +193,13 @@ def appTouch(evt) {
     	state.manualOff = true
         log.info "Switching off switches"
         switches.off()
+        state.checkOffScheduledAt = now() + 60 * 1000
         runIn(60, checkOff)
     } else {
     	state.manualOn = true
         log.info "Switching on switches"
         switches.on()
+        state.checkOnScheduledAt = now() + 60 * 1000
         runIn(60, checkOn)
     }
 }

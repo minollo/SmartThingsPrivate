@@ -11,6 +11,9 @@ definition(
     iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience%402x.png")
 
 preferences {
+	section("Poller device...") {
+    	input "pollerDevice", "capability.battery", required: false
+    }
 	section("Manage light..."){
 		input "motionSensors", "capability.motionSensor", title: "Motion sensor", multiple: true
 		input "minutes", "number", title: "Minutes timeout"
@@ -38,18 +41,35 @@ def updated()
 }
 
 def initialize() {
-	subscribe(motionSensors, "motion", motionHandler)
+    subscribe(motionSensors, "motion", motionHandler)
     subscribe(lightSwitch, "switch", lightSwitchHandler, [filterEvents: false])
     subscribe(plugs, "switch", plugsHandler)
     subscribe(location, modeChangeHandler)
+    if (pollerDevice) subscribe(pollerDevice, "battery", pollerEvent)
+    state.keepAliveLatest = now()
     schedule("0 0 0/1 * * ?", keepAlive)	//poll every hour to keep the sensors active
     updateState(location.mode)
+}
+
+def pollerEvent(evt) {
+    log.debug "[PollerEvent]"
+    log.debug "[PollerEvent] keepAliveLatest == ${state.keepAliveLatest}; now() == ${now()}"
+    if (state.keepAliveLatest && now() - state.keepAliveLatest > 3720000) {
+        log.error "Waking up keepAlive timer"
+        keepAlive()
+        schedule("0 0 0/1 * * ?", keepAlive)	//poll every hour to keep the sensors active
+    }
+    if (state.turnOffLightLatest && now() - state.turnOffLightLatest > (minutes + 2) * 60 * 1000) {
+        log.error "Waking up turnOffLight timer"
+        turnOffLight()
+    }
 }
 
 def modeChangeHandler(evt)
 {
 	if (evt.value == awayMode) {
 		log.debug "[Turn off timeout/move] Location mode is away; shut down everything"
+        state.turnOffLightLatest = null
     	unschedule(turnOffLight)
         lightSwitch.off()
         plugs?.off()
@@ -67,6 +87,7 @@ private updateState(newMode)
 	log.debug "[Turn off timeout/move] Update state"
     if (newMode == awayMode) {
 		log.debug "[Turn off timeout/move] Location mode is away; shut down everything"
+        state.turnOffLightLatest = null
     	unschedule(turnOffLight)
         lightSwitch.off()
         plugs?.off()
@@ -82,6 +103,7 @@ def motionHandler(evt)
     } else {
     	if (evt.value == "active") {
             log.debug "[Turn off timeout/move] Motion is active"
+            state.turnOffLightLatest = null
             unschedule(turnOffLight)
             if (onWhenMovement && onWhenMovement == "true") {
             	if (state.manualOffAt && (now() - state.manualOffAt) < (10 * 1000)) {	// after manual off, don't turn on on movement for 10 seconds
@@ -102,13 +124,14 @@ def motionHandler(evt)
                     if (state.plugsOn && state.plugsOn == "true") {
                     	plugs?.on()
                     }
-            		runIn(minutes * 60, turnOffLight)
-                	unschedule(stopCheckMovement)
+                    state.turnOffLightLatest = now()
+                    runIn(minutes * 60, turnOffLight)
+                    unschedule(stopCheckMovement)
                 }
             }
         } else if (evt.value == "inactive" && allMotionInactive()) {
             log.debug "[Turn off timeout/move] Motion is inactive"
-            unschedule(turnOffLight)
+            state.turnOffLightLatest = now()
             runIn(minutes * 60, turnOffLight)
         }
 	}
@@ -139,10 +162,10 @@ def lightSwitchHandler(evt)
                 state.switchOn = "false"
                 unschedule(stopCheckMovement)
             }
-        } else {
+        } else if (lightSwitch.currentValue("switch") == "on") {
             log.info "Light switch is on"
             state.switchOn = "true"
-            unschedule(turnOffLight)
+            state.turnOffLightLatest = now()
             runIn(minutes * 60, turnOffLight)
             state.checkMovement = "false"
             unschedule(stopCheckMovement)
@@ -153,12 +176,13 @@ def lightSwitchHandler(evt)
             log.info "Switch already off; turn plugs off"
             plugs?.off()
             state.plugsOn = "false"
+            state.turnOffLightLatest = null
             unschedule(turnOffLight)
         } else if (evt.value == "on") {
             log.info "Switch already on; turn plugs on"
             plugs?.on()
             state.plugsOn = "true"
-            unschedule(turnOffLight)
+            state.turnOffLightLatest = now()
             runIn(minutes * 60, turnOffLight)
         }
         state.checkMovement = "false"
@@ -171,36 +195,38 @@ def plugsHandler(evt) {
 
 def turnOffLight()
 {
-	log.debug "[Turn off timeout/move] Scheduled turn off light"
+    log.debug "[Turn off timeout/move] Scheduled turn off light"
+    state.turnOffLightLatest = null
     if (lightSwitch.currentValue("switch") == "on" || (state.plugsOn && state.plugsOn == "true")) {
-		lightSwitch.off()
-    	plugs?.off()
-	    log.info "Starting grace period monitoring movement"
-	    state.checkMovement = "true"
-	    runIn(60, stopCheckMovement)
+        lightSwitch.off()
+        plugs?.off()
+        log.info "Starting grace period monitoring movement"
+        state.checkMovement = "true"
+        runIn(60, stopCheckMovement)
     }
 }
 
 def stopCheckMovement()
 {
-	state.checkMovement = "false"
+    state.checkMovement = "false"
     state.plugsOn = "false"
     state.switchOn = "false"
-	log.info "Grace period for turning lights back on has expired"
+    log.info "Grace period for turning lights back on has expired"
 }
 
 
 def keepAlive()
 {
-	log.debug "keepAlive"
-	for (sensor in motionSensors) {
+    log.debug "keepAlive"
+    state.keepAliveLatest = now()
+    for (sensor in motionSensors) {
         for (capability in sensor.capabilities) {
-        	if (capability.name == "Polling") {
-        		log.info "Polling ${sensor.label}"
-				sensor.poll()
+            if (capability.name == "Polling") {
+                log.info "Polling ${sensor.label}"
+                sensor.poll()
                 break;
             }
-		}
-	}
+        }
+    }
 }
 

@@ -21,6 +21,9 @@ definition(
 )
 
 preferences {
+	section("Poller device...") {
+    	input "pollerDevice", "capability.battery", required: false
+    }
 	section("When all of these people leave home") {
 		input "people", "capability.presenceSensor", multiple: true
 	}
@@ -63,6 +66,7 @@ def presence(evt)
 			if (everyoneIsAway()) {
 				log.debug "starting sequence"
 				def delay = falseAlarmThreshold != null ? falseAlarmThreshold * 60 : 10 * 60
+                state.presenceChangeTime = now()
 				runIn(delay, "takeAction")
 			}
 		}
@@ -72,6 +76,7 @@ def presence(evt)
 	}
 	else {
 		log.debug "canceling"
+		state.presenceChangeTime = null
 		unschedule("takeAction")
         if (location.mode == awayMode) {
         	setLocationMode(backMode)
@@ -81,6 +86,7 @@ def presence(evt)
 
 def takeAction()
 {
+	state.presenceChangeTime = null
 	// TODO -- uncomment when app label is available
 	//def message = "${app.label} changed your mode to '${newMode}' because everyone left home"
 	def message = "Apparently everyone has left ${location.name}; mode is now set to '${awayMode}'"
@@ -94,6 +100,7 @@ def takeAction()
 
 private initialize()
 {
+    if (pollerDevice) subscribe(pollerDevice, "battery", pollerEvent)
 	if (everyoneIsAway()) {
     	if (location.mode != awayMode) {
     		setLocationMode(awayMode);
@@ -103,6 +110,15 @@ private initialize()
     		setLocationMode(backMode);
         }
    	}
+}
+
+def pollerEvent(evt) {
+	log.debug "[PollerEvent]"
+    if (state.presenceChangeTime && now() - state.presenceChangeTime > 600000) {
+    	log.error "Wake up presence change timer"
+		unschedule("takeAction")
+    	takeAction()
+    }
 }
 
 private everyoneIsAway()

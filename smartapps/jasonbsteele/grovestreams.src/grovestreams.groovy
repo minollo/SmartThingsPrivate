@@ -134,11 +134,12 @@ def processQueue() {
     state.keepAliveLatest = now()
 	def url = "https://grovestreams.com/api/feed?api_key=${channelKey}"
     def customHeader = ["X-Forwarded-For": app.id]
+    //log.debug "URL: ${url}; Header: ${customHeader}; Body: ${state.queue}"
     if (state.queue != []) {
         log.debug "Events: ${state.queue}"
       
         try {
-            httpPutJson(["uri": url, "header": customHeader, "body": state.queue]) { 
+            httpPutJson(["uri": url, "header": customHeader, "body": state.queue]) {
                 response -> 
                 if (response.status != 200 ) {
                     log.debug "GroveStreams logging failed, status = ${response.status}"
@@ -148,9 +149,13 @@ def processQueue() {
                 }
             }
         } catch(e) {
-            def errorInfo = "Error sending value: ${e}"
-            log.error errorInfo
-        }
+        	if (e.toString().contains("groovyx.net.http.ResponseParseException")) {
+            	log.warn "Error parsing return value: \"${e}\""
+                state.queue = []
+            } else {
+            	log.error "Error sending items: \"${e}\""
+            }
+		}
     }
 }
 
