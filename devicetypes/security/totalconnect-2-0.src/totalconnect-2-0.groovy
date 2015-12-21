@@ -66,6 +66,7 @@ def toggleEnable() {
 }
 
 def toggleAlarm() {
+	state.sessionID = null	//use as a way to force a new session
 	def currentStatus = device.currentValue("alarmStatus")
 	log.debug "toggleAlarm() from ${currentStatus}"
     if (currentStatus == "away" || currentStatus == "stay") {
@@ -148,7 +149,7 @@ def api(method, args, success) {
 	def methods = [
     	"getSession": [uri: "${baseURL}/AuthenticateUserLogin?${args}"],
     	"getSessionDetails": [uri: "${baseURL}/GetSessionDetails?${args}"],
-    	"getPanelStatus": [uri: "${baseURL}/GetPanelFullStatus?${args}"],
+    	"getPanelStatus": [uri: "${baseURL}/GetPanelMetaDataAndFullStatus?${args}"],
     	"getUserDetails": [uri: "${baseURL}/GetUserDetails?${args}"],
     	"armAlarm": [uri: "${baseURL}/ArmSecuritySystem?${args}"],
     	"disarmAlarm": [uri: "${baseURL}/DisarmSecuritySystem?${args}"],
@@ -247,13 +248,13 @@ private getArmedStatus(sessionID, locationID) {
     def bypassStatus
 	def result = {
     	response ->
-        	if (response.data && response.data.name() == "PanelStatusResults") {
+        	if (response.data && response.data.name() == "PanelMetadataAndStatusResults") {
             	def resultCode = response.data.ResultCode.text()
                 log.debug "getArmedStatus().resultCode == ${resultCode}"
                 if (resultCode != "0") {
                 	log.error "getArmedStatus(): ${response.data.ResultData.text()}"
                 } else {
-                	def armedCode = response.data.PanelStatus.Partitions.PartitionInfo.ArmingState.text()
+                	def armedCode = response.data.PanelMetadataAndStatus.Partitions.PartitionInfo.ArmingState.text()
                     if (armedCode == "10200") {
                     	armedStatus = "off"
                         bypassStatus = "false"
@@ -289,6 +290,7 @@ private getArmedStatus(sessionID, locationID) {
             }
     }
 	api("getPanelStatus", "SessionID=${sessionID}&LocationID=${locationID}&LastSequenceNumber=0&LastUpdatedTimestampTicks=0&PartitionID=0", result)
+    //log.trace "SessionID=${sessionID}&LocationID=${locationID}&LastSequenceNumber=0&LastUpdatedTimestampTicks=0&PartitionID=0"
     [armedStatus, bypassStatus]
 }
 
