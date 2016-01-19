@@ -142,7 +142,7 @@ def parse(String description)
 		else {
 			def mode = device.latestValue("thermostatMode")
 			log.info "THERMOSTAT, latest mode = ${mode}"
-			if ((map.name == "heatingSetpoint" && mode == "heat") || (map.name == "coolingSetpoint" && mode == "cool")) {
+			if ((map.name == "heatingSetpoint" && (mode == "heat" || mode == "emergencyHeat")) || (map.name == "coolingSetpoint" && mode == "cool")) {
 				map2.value = map.value
 				map2.unit = map.unit
 			}
@@ -171,7 +171,7 @@ def zwaveEvent(physicalgraph.zwave.commands.multichannelv3.MultiInstanceCmdEncap
 
 def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	if (cmd.batteryLevel <= 100) {
-        def nowTime = now()
+        def nowTime = new Date().time
         state.lastBatteryGet = nowTime
         def map = [ name: "battery", unit: "%" ]
         if (cmd.batteryLevel == 0xFF || cmd.batteryLevel == 0) {
@@ -278,7 +278,7 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatfanstatev1.ThermostatFanSt
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.thermostatmodev2.ThermostatModeReport cmd) {
-	def nowTime = now()
+	def nowTime = new Date().time
 	state.lastMoreInfoGet = nowTime
 	def map = [:]
 	switch (cmd.mode) {
@@ -369,7 +369,7 @@ def poll() {
 }
 
 private getMoreInfo() {	//once every 1 hour
-	def nowTime = now()
+	def nowTime = new Date().time
 	def ageInMinutes = state.lastMoreInfoGet ? (nowTime - state.lastMoreInfoGet)/60000 : 60
     def batteryValue = device.currentValue("battery")
     log.debug "More info report age: ${ageInMinutes} minutes, battery charge is ${batteryValue}%"
@@ -383,7 +383,7 @@ private getMoreInfo() {	//once every 1 hour
 }
 
 private getBattery() {	//once every 10 hours
-	def nowTime = now()
+	def nowTime = new Date().time
 	def ageInMinutes = state.lastBatteryGet ? (nowTime - state.lastBatteryGet)/60000 : 600
     log.debug "Battery report age: ${ageInMinutes} minutes"
     if (ageInMinutes >= 600) {
@@ -394,7 +394,7 @@ private getBattery() {	//once every 10 hours
 
 private setClock() {	//once a day
 
-	def nowTime = now()
+	def nowTime = new Date().time
 	def ageInMinutes = state.lastClockSet ? (nowTime - state.lastClockSet)/60000 : 1440
     log.debug "Clock set age: ${ageInMinutes} minutes"
     if (ageInMinutes >= 1440) {
@@ -604,7 +604,7 @@ def fanCirculate() {
 }
 
 private updateResponsiveness() {
-    def nowTime = now()
+    def nowTime = new Date().time
     state.lastResponse = nowTime
     if (device.currentValue("responsive") == null || device.currentValue("responsive") == "false") {
 		log.info "Updating responsive attribute to true"
@@ -614,7 +614,7 @@ private updateResponsiveness() {
 }
 
 private checkResponsiveness() {
-    def nowTime = now()
+    def nowTime = new Date().time
     if (state.lastResponse) {
     	def lastResponseAge = (nowTime - state.lastResponse) / 60000
 		log.debug "Last response from device was received ${lastResponseAge} minutes ago"
