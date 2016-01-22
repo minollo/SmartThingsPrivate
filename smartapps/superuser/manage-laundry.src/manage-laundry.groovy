@@ -16,6 +16,9 @@ definition(
     iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience%402x.png")
 
 preferences {
+	section("Poller device...") {
+    	input "pollerDevice", "capability.battery", required: false
+    }
 	section("Manage temperature... "){
 		input "tempSensor", "capability.temperatureMeasurement", title: "Temperature sensor"
 		input "heaterOutlet", "capability.switch", title: "Heater outlet"
@@ -42,6 +45,7 @@ def installed()
     subscribe(lightSwitch, "switch", lightSwitchHandler)
     subscribe(location, modeChangeHandler)
 	subscribe(app, appTouch)
+    if (pollerDevice) subscribe(pollerDevice, "battery", pollerEvent)
     updateState()
 }
 
@@ -54,8 +58,17 @@ def updated()
 	subscribe(motionSensor, "motion", motionHandler)
     subscribe(lightSwitch, "switch", lightSwitchHandler)
     subscribe(location, modeChangeHandler)
+    if (pollerDevice) subscribe(pollerDevice, "battery", pollerEvent)
 	subscribe(app, appTouch)
     updateState()
+}
+
+def pollerEvent(evt) {
+    log.debug "[PollerEvent] timerLatest==${state.timerLatest}; now()==${now()}"
+    if (state.timerLatest && (now() - state.timerLatest) > (minutes + 1) * 60 * 1000) {
+        log.error "Turning off light (timer was asleep?)"
+        turnOffLight()
+    }
 }
 
 def appTouch(evt)
@@ -91,6 +104,7 @@ private updateState()
 	log.debug "[Manage Laundry] Update temperature control"
     if (location.mode == awayMode && !state.manualOn) {
 		log.debug "[Manage Laundry] Location mode is away; shut down ${if(!heatInAwayMode) "everything" else "lights (not heat)"}"
+        state.timerLatest = null
     	unschedule(turnOffLight)
         lightSwitch.off()
         if (!heatInAwayMode) heaterOutlet.off()
@@ -117,6 +131,7 @@ def motionHandler(evt)
     } else {
     	if (evt.value == "active") {
             log.debug "[Manage Laundry] Motion is active"
+            state.timerLatest = null
             unschedule(turnOffLight)
             if (lightSwitch.currentValue("switch") == "off") {
                 log.debug "[Manage Laundry] Turn lights on"
@@ -129,6 +144,7 @@ def motionHandler(evt)
         } else if (evt.value == "inactive") {
             log.debug "[Manage Laundry] Motion is inactive"
             unschedule(turnOffLight)
+            state.timerLatest = now()
             runIn(minutes * 60, turnOffLight)
         }
 	}
@@ -142,10 +158,12 @@ def lightSwitchHandler(evt)
             if (evt.isPhysical()) {
             	state.manualOffAt = now()
             }
+            state.timerLatest = null
             unschedule(turnOffLight)
         } else {
             log.debug "[Manage Laundry] Light switch is on"
             unschedule(turnOffLight)
+            state.timerLatest = now()
             runIn(minutes * 60, turnOffLight)
         }
 	}
@@ -154,5 +172,7 @@ def lightSwitchHandler(evt)
 def turnOffLight()
 {
 	log.debug "[Manage Laundry] Scheduled turn off light"
-	lightSwitch.off();
+    try { unschedule(turnOffLight) } catch(e) { log.error e}
+	lightSwitch.off()
+    state.timerLatest = null
 }

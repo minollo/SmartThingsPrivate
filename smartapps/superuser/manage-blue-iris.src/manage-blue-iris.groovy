@@ -21,6 +21,9 @@ definition(
 }
 
 preferences {
+	section("Poller device...") {
+    	input "pollerDevice", "capability.battery", required: false
+    }
 	section("Server settings..."){
 		input "serverURL", "text", title: "URL"
 		input "username", "text", title: "User"
@@ -60,11 +63,21 @@ def initialize() {
     subscribe(location, modeHandler)
     subscribe(virtualSwitch, "switch", virtualSwitchHandler)
 	subscribe(app, appTouch)
+    if (pollerDevice) subscribe(pollerDevice, "battery", pollerEvent)
 	updateMode(location.mode)
+}
+
+def pollerEvent(evt) {
+    log.debug "[PollerEvent] timerLatest==${state.timerLatest}; now()==${now()}"
+    if (state.timerLatest && (now() - state.timerLatest) > (getRecordingTimeout() + 60) * 1000) {
+        log.error "Activating cameras (timer was asleep?)"
+        activateCameras()
+    }
 }
 
 def appTouch(evt) {
 	log.debug "appTouch: $evt"
+    state.timerLatest = null
     login()
 	if (state.session && camera1) {
     	def currentStatus = getStatusDetails(camera1)
@@ -85,6 +98,7 @@ def appTouch(evt) {
                 log.info "Enabling cameras at ${location}"
                 log.debug "Turning on switches and waiting for ${getRecordingTimeout()} seconds"
                 switches?.on()
+                state.timerLatest = now()
                 runIn(getRecordingTimeout(), activateCameras)
             }
         }
@@ -93,10 +107,12 @@ def appTouch(evt) {
 
 def virtualSwitchHandler(evt) {
 	log.debug "virtualSwitchHandler($evt)"
+    state.timerLatest = null
 	if (evt.value == "on") {
         log.info "Enabling cameras at ${location}"
         log.debug "Turning on switches and waiting for ${getRecordingTimeout()} seconds"
         switches?.on()
+        state.timerLatest = now()
         runIn(getRecordingTimeout(), activateCameras)
     } else {
         unschedule(activateCameras)
@@ -132,9 +148,11 @@ private updateMode(newMode) {
             log.info "Enabling cameras at ${location}"
             log.debug "Turning on switches and waiting for ${getRecordingTimeout()} seconds"
             switches?.on()
+            state.timerLatest = now()
             runIn(getRecordingTimeout(), activateCameras)
        	}
     } else {
+    	state.timerLatest = null
     	if (virtualSwitch)
         	virtualSwitch.off()
         else {
@@ -147,6 +165,8 @@ private updateMode(newMode) {
 }
 
 private deActivateCameras() {
+    state.timerLatest = null
+    unschedule(activateCameras)
     login()
     pauseRecording(camera1)
     pauseRecording(camera2)
@@ -162,6 +182,9 @@ private deActivateCameras() {
 
 def activateCameras() {
 	log.info "Activating cameras at ${location}"
+    try{
+    	unschedule(activateCameras)
+    } catch(e) { log.error e }
     login()
     enableCamera(camera1)
     enableCamera(camera2)
@@ -175,6 +198,7 @@ def activateCameras() {
     unpauseRecording(camera2)
     unpauseRecording(camera3)
     logout()
+    state.timerLatest = null
 }
 
 private login() {
