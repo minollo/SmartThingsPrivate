@@ -80,20 +80,25 @@ def toggleAlarm() {
 def alarmOn() {
 	def enabled = device.currentValue("enabled")
 	log.debug "alarmOn() - enabled == ${enabled}"
+	def currentStatus = device.currentValue("alarmStatus")
     if (enabled == "true") {
-        def sessionID = getSession(TCusername, TCpassword)
-        if (sessionID) {
-            def sessionDetails = getSessionDetails(sessionID, TClocation)
-            def locationID = sessionDetails[0]
-            def deviceID = sessionDetails[1]
-            def userID = sessionDetails[2]
-            if (locationID && deviceID) {
-                def status = getArmedStatus(sessionID, locationID)
-                if (status && status[0] && status[0] == "off") {
-                    def userPIN = getUserPIN(sessionID, locationID, deviceID, userID)
-                    armAlarm(sessionID, locationID, deviceID, userPIN, "away")
+    	if (currentStatus == "off") {
+            def sessionID = getSession(TCusername, TCpassword)
+            if (sessionID) {
+                def sessionDetails = getSessionDetails(sessionID, TClocation)
+                def locationID = sessionDetails[0]
+                def deviceID = sessionDetails[1]
+                def userID = sessionDetails[2]
+                if (locationID && deviceID) {
+                    def status = getArmedStatus(sessionID, locationID)
+                    if (status && status[0] && status[0] == "off") {
+                        def userPIN = getUserPIN(sessionID, locationID, deviceID, userID)
+                        armAlarm(sessionID, locationID, deviceID, userPIN, "away")
+                    }
                 }
             }
+    	} else {
+        	log.warning "Alarm is not off; ignoring alarmOn()"
         }
 	} else {
     	log.debug "Ignoring command"
@@ -104,19 +109,24 @@ def alarmStay() {
 	def enabled = device.currentValue("enabled")
 	log.debug "alarmOn() - enabled == ${enabled}"
     if (enabled == "true") {
-        def sessionID = getSession(TCusername, TCpassword)
-        if (sessionID) {
-            def sessionDetails = getSessionDetails(sessionID, TClocation)
-            def locationID = sessionDetails[0]
-            def deviceID = sessionDetails[1]
-            def userID = sessionDetails[2]
-            if (locationID && deviceID) {
-                def status = getArmedStatus(sessionID, locationID)
-                if (status && status[0] && status[0] == "off") {
-                    def userPIN = getUserPIN(sessionID, locationID, deviceID, userID)
-                    armAlarm(sessionID, locationID, deviceID, userPIN, "stay")
+		def currentStatus = device.currentValue("alarmStatus")
+      	if (currentStatus == "off") {
+            def sessionID = getSession(TCusername, TCpassword)
+            if (sessionID) {
+                def sessionDetails = getSessionDetails(sessionID, TClocation)
+                def locationID = sessionDetails[0]
+                def deviceID = sessionDetails[1]
+                def userID = sessionDetails[2]
+                if (locationID && deviceID) {
+                    def status = getArmedStatus(sessionID, locationID)
+                    if (status && status[0] && status[0] == "off") {
+                        def userPIN = getUserPIN(sessionID, locationID, deviceID, userID)
+                        armAlarm(sessionID, locationID, deviceID, userPIN, "stay")
+                    }
                 }
             }
+    	} else {
+        	log.warning "Alarm is not off; ignoring alarmStay()"
         }
 	} else {
     	log.debug "Ignoring command"
@@ -290,7 +300,7 @@ private getArmedStatus(sessionID, locationID) {
             }
     }
 	api("getPanelStatus", "SessionID=${sessionID}&LocationID=${locationID}&LastSequenceNumber=0&LastUpdatedTimestampTicks=0&PartitionID=0", result)
-    //log.trace "SessionID=${sessionID}&LocationID=${locationID}&LastSequenceNumber=0&LastUpdatedTimestampTicks=0&PartitionID=0"
+//    log.trace "SessionID=${sessionID}&LocationID=${locationID}&LastSequenceNumber=0&LastUpdatedTimestampTicks=0&PartitionID=0"
     [armedStatus, bypassStatus]
 }
 
