@@ -48,13 +48,13 @@ def updated()
 def modeChangeHandler(evt)
 {
 	if (evt.value == awayMode) {
-		unschedule(doOff)
+		try {unschedule(doOff)} catch(e) {log.error "Ignoring error: ${e}"}
     	switch1.off()
     }
 }
 
 def motionActiveHandler(evt) {
-	unschedule(doOff)
+	try {unschedule(doOff)} catch(e) {log.error "Ignoring error: ${e}"}
 	switch1.on()
 }
 

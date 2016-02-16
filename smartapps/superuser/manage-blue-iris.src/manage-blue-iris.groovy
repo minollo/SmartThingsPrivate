@@ -86,7 +86,7 @@ def appTouch(evt) {
         	if (virtualSwitch)
             	virtualSwitch.off()
             else {
-                unschedule(activateCameras)
+                try {unschedule(activateCameras)} catch(e) {log.error "Ignoring error: ${e}"}
                 log.info "Disabling cameras at ${location}"
                 deActivateCameras()
                 switches?.off()
@@ -115,7 +115,7 @@ def virtualSwitchHandler(evt) {
         state.timerLatest = now()
         runIn(getRecordingTimeout(), activateCameras)
     } else {
-        unschedule(activateCameras)
+    	try { unschedule(activateCameras) } catch(e) { log.error "Ignoring exception: ${e}" }
         log.info "Disabling cameras at ${location}"
         deActivateCameras()
         switches?.off()
@@ -156,7 +156,7 @@ private updateMode(newMode) {
     	if (virtualSwitch)
         	virtualSwitch.off()
         else {
-            unschedule(activateCameras)
+            try {unschedule(activateCameras)} catch(e) {log.error "Ignoring error: ${e}"}
             log.info "Disabling cameras at ${location}"
             deActivateCameras()
             switches?.off()
@@ -166,7 +166,7 @@ private updateMode(newMode) {
 
 private deActivateCameras() {
     state.timerLatest = null
-    unschedule(activateCameras)
+    try {unschedule(activateCameras)} catch(e) {log.error "Ignoring error: ${e}"}
     login()
     pauseRecording(camera1)
     pauseRecording(camera2)
@@ -182,9 +182,7 @@ private deActivateCameras() {
 
 def activateCameras() {
 	log.info "Activating cameras at ${location}"
-    try{
-    	unschedule(activateCameras)
-    } catch(e) { log.error e }
+	try {unschedule(activateCameras)} catch(e) {log.error "Ignoring error: ${e}"}
     login()
     enableCamera(camera1)
     enableCamera(camera2)

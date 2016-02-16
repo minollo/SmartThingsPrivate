@@ -53,7 +53,7 @@ def initialize() {
 
 def pollerEvent(evt) {
     log.debug "[PollerEvent]"
-    log.debug "[PollerEvent] keepAliveLatest == ${state.keepAliveLatest}; now() == ${now()}"
+    log.debug "[PollerEvent] keepAliveLatest == ${state.keepAliveLatest}; turnOffLightLatest == ${state.turnOffLightLatest}; now() == ${now()}"
     if (state.keepAliveLatest && now() - state.keepAliveLatest > 3720000) {
         log.error "Waking up keepAlive timer"
         keepAlive()
@@ -70,7 +70,7 @@ def modeChangeHandler(evt)
 	if (evt.value == awayMode) {
 		log.debug "[Turn off timeout/move] Location mode is away; shut down everything"
         state.turnOffLightLatest = null
-    	unschedule(turnOffLight)
+    	try {unschedule(turnOffLight)} catch(e) {log.error "Ignoring exception: ${e}"}
         lightSwitch.off()
         plugs?.off()
         state.switchOn = "false"
@@ -88,7 +88,7 @@ private updateState(newMode)
     if (newMode == awayMode) {
 		log.debug "[Turn off timeout/move] Location mode is away; shut down everything"
         state.turnOffLightLatest = null
-    	unschedule(turnOffLight)
+    	try {unschedule(turnOffLight)} catch(e) {log.error "Ignoring exception: ${e}"}
         lightSwitch.off()
         plugs?.off()
         state.switchOn = "false"
@@ -104,7 +104,7 @@ def motionHandler(evt)
     	if (evt.value == "active") {
             log.debug "[Turn off timeout/move] Motion is active"
             state.turnOffLightLatest = null
-            unschedule(turnOffLight)
+            try {unschedule(turnOffLight)} catch(e) {log.error "Ignoring exception: ${e}"}
             if (onWhenMovement && onWhenMovement == "true") {
             	if (state.manualOffAt && (now() - state.manualOffAt) < (10 * 1000)) {	// after manual off, don't turn on on movement for 10 seconds
                 	log.debug "Movement but too close to manual off"
@@ -126,7 +126,7 @@ def motionHandler(evt)
                     }
                     state.turnOffLightLatest = now()
                     runIn(minutes * 60, turnOffLight)
-                    unschedule(stopCheckMovement)
+                    try {unschedule(stopCheckMovement)} catch(e) {log.error "Ignoring exception: ${e}"}
                 }
             }
         } else if (evt.value == "inactive" && allMotionInactive()) {
@@ -160,7 +160,7 @@ def lightSwitchHandler(evt)
             state.manualOffAt = now()
             if (state.checkMovement && state.checkMovement == "false") {
                 state.switchOn = "false"
-                unschedule(stopCheckMovement)
+                try {unschedule(stopCheckMovement)} catch(e) {log.error "Ignoring exception: ${e}"}
             }
         } else if (lightSwitch.currentValue("switch") == "on") {
             log.info "Light switch is on"
@@ -168,7 +168,7 @@ def lightSwitchHandler(evt)
             state.turnOffLightLatest = now()
             runIn(minutes * 60, turnOffLight)
             state.checkMovement = "false"
-            unschedule(stopCheckMovement)
+            try {unschedule(stopCheckMovement)} catch(e) {log.error "Ignoring exception: ${e}"}
         }
     } else {
         log.info "Light switch pressed but no state change"
@@ -177,7 +177,7 @@ def lightSwitchHandler(evt)
             plugs?.off()
             state.plugsOn = "false"
             state.turnOffLightLatest = null
-            unschedule(turnOffLight)
+            try {unschedule(turnOffLight)} catch(e) {log.error "Ignoring exception: ${e}"}
         } else if (evt.value == "on") {
             log.info "Switch already on; turn plugs on"
             plugs?.on()
@@ -186,7 +186,7 @@ def lightSwitchHandler(evt)
             runIn(minutes * 60, turnOffLight)
         }
         state.checkMovement = "false"
-        unschedule(stopCheckMovement)
+        try {unschedule(stopCheckMovement)} catch(e) {log.error "Ignoring exception: ${e}"}
     }
 }
 

@@ -68,15 +68,13 @@ def contactSensorOpenHandler(evt)
 def contactSensorClosedHandler(evt)
 {
    	log.debug "Garage just closed; we are fine"
-	unschedule(closeGarage)
+	try {unschedule(closeGarage)} catch(e) {log.error "Ignoring error: ${e}"}
 }
 
 private updateState()
 {
 	state.timerLatest = null
-    try {
-    	unschedule(closeGarage)
-    } catch(e) { log.error e }        
+	try {unschedule(closeGarage)} catch(e) {log.error "Ignoring error: ${e}"}
 	if (contactSensor.currentValue("contact") == "open") {
     	if (location.mode == awayMode) {
    	    	log.debug "Close garage in $maxOpenTimeWhenAway minutes"
@@ -93,9 +91,7 @@ private updateState()
 def closeGarage()
 {
 	log.debug "Time to close the garage"
-    try {
-    	unschedule(closeGarage)
-    } catch(e) { log.error e }
+	try {unschedule(closeGarage)} catch(e) {log.error "Ignoring error: ${e}"}
 	if (contactSensor.currentValue("contact") == "open") {
     	log.debug "Push button"
     	doorSwitch.push()

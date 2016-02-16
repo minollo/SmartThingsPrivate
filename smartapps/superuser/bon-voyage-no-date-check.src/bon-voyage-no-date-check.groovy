@@ -113,8 +113,9 @@ private initialize()
 }
 
 def pollerEvent(evt) {
-	log.debug "[PollerEvent]"
-    if (state.presenceChangeTime && now() - state.presenceChangeTime > 600000) {
+	def delay = falseAlarmThreshold != null ? (falseAlarmThreshold + 1) * 60 : 10 * 60
+	log.debug "[PollerEvent presenceChangeTime = ${state.presenceChangeTime}; now = ${now()}]"
+    if (state.presenceChangeTime && now() - state.presenceChangeTime > (delay * 1000)) {
     	log.error "Wake up presence change timer"
 		unschedule("takeAction")
     	takeAction()

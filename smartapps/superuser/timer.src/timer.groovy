@@ -185,8 +185,8 @@ def appTouch(evt) {
 	log.debug "appTouch: $evt, $settings"
     def switchesAreOn = (switches[0].currentValue("switch") == "on")
     log.debug "Switches are ${switchesAreOn ? "on" : "off"}"
-    unschedule(checkOn)
-    unschedule(checkOff)
+    try {unschedule(checkOn)} catch(e) {log.error "Ignoring error: ${e}"}
+    try {unschedule(checkOff)} catch(e) {log.error "Ignoring error: ${e}"}
     state.manualOff = false
     state.manualOn = false
     if (switchesAreOn) {

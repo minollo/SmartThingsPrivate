@@ -74,8 +74,8 @@ def initialize() {
 }
 
 def pollerEvent(evt) {
-	log.debug "[PollerEvent]"
-    if (state.keepAliveLatest && now() - state.keepAliveLatest > 900000) {
+	log.debug "[PollerEvent] keepAliveLatest == ${atomicState.keepAliveLatest}; now == ${now()}"
+    if (atomicState.keepAliveLatest && now() - atomicState.keepAliveLatest > 660000) {
     	log.error "Waking up timer"
     	processQueue()
     }
@@ -122,36 +122,36 @@ def handleSwitchEvent(evt) {
 }
 
 private queueValue(evt, Closure convert) {
-	if (state.queue == null) state.queue = []
 	def jsonPayload = ["compId": evt.displayName, "streamId": evt.name, "data": convert(evt.value), "time": now()]
     log.debug "Appending to queue ${jsonPayload}"
     
-    state.queue << jsonPayload
+    if (atomicState.queue == null) atomicState.queue = []
+    atomicState.queue = atomicState.queue + jsonPayload
 }
 
 def processQueue() {
     runIn(600, processQueue)
-    state.keepAliveLatest = now()
+    atomicState.keepAliveLatest = now()
 	def url = "https://grovestreams.com/api/feed?api_key=${channelKey}"
     def customHeader = ["X-Forwarded-For": app.id]
-    //log.debug "URL: ${url}; Header: ${customHeader}; Body: ${state.queue}"
-    if (state.queue != []) {
-        log.debug "Events: ${state.queue}"
+    //log.debug "URL: ${url}; Header: ${customHeader}; Body: ${atomicState.queue}"
+    if (atomicState.queue != []) {
+        log.debug "Events: ${atomicState.queue}"
       
         try {
-            httpPutJson(["uri": url, "header": customHeader, "body": state.queue]) {
+            httpPutJson(["uri": url, "header": customHeader, "body": atomicState.queue]) {
                 response -> 
                 if (response.status != 200 ) {
                     log.debug "GroveStreams logging failed, status = ${response.status}"
                 } else {
                 	log.debug "GroveStreams accepted event(s)"
-                    state.queue = []
+                    atomicState.queue = []
                 }
             }
         } catch(e) {
         	if (e.toString().contains("groovyx.net.http.ResponseParseException")) {
             	log.warn "Error parsing return value: \"${e}\""
-                state.queue = []
+                atomicState.queue = []
             } else {
             	log.error "Error sending items: \"${e}\""
             }

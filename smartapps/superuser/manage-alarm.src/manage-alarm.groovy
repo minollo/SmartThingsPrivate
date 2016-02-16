@@ -52,7 +52,7 @@ def modeChangeHandler(evt) {
 
 private updateState(mode) {
 	log.debug "updateState(${mode})"
-    unschedule(checkAlarmCommand)
+    try {unschedule(checkAlarmCommand)} catch(e) {log.error "Ignoring error: ${e}"}
 	if (mode == awayMode) {
     	if (alarm.currentValue("enabled") == "true") {
             alarm.alarmOn()

@@ -104,28 +104,32 @@ def operatingStateHandler(evt)
 {
 	log.debug "thermostatOperatingState: $evt.value"
 	if (heaters) {
-        unschedule(turnOnAuxHeaters)
+        try {unschedule(turnOnAuxHeaters)} catch(e) {log.error "Ignoring error: ${e}"}
     	if (evt.value != "heating" && heaters.first().currentValue("switch") == "on") {
     		log.info "Themostat not heating; shutting down any aux heat"
             heaters.off()
 	    } else if (evt.value == "heating") {
     		def minutes = 30
     		log.info "Themostat started heating; turn on heaters in $minutes minutes if not done"
+            state.latestTurnOnAuxHeaters = now()
     		runIn(minutes * 60, turnOnAuxHeaters)	
   		}  
     }
 }
 
 def turnOnAuxHeaters() {
-	log.debug "turnOnAuxHeaters; thermostatOperatingState is ${thermostat.currentValue("thermostatOperatingState")}"
-	if (thermostat.currentValue("thermostatOperatingState") != "heating") {
-    	log.info("Ignoring request to turn on aux heaters, as thermostat is not heating")
-	} else if (location.mode.startsWith(mode1) || location.mode.startsWith(mode2) || mode3 == null || location.mode.startsWith(mode3)) {
-		log.info("Thermostat has been working for a while heating; turn on AUX heaters")
-    	heaters.on()
-    } else {
-    	log.info("Thermostat has been working for a while heating, but mode is away; ignore the problem")
-    }
+	if (state.latestTurnOnAuxHeaters != null) {
+        log.debug "turnOnAuxHeaters; thermostatOperatingState is ${thermostat.currentValue("thermostatOperatingState")}"
+        if (thermostat.currentValue("thermostatOperatingState") != "heating") {
+            log.info("Ignoring request to turn on aux heaters, as thermostat is not heating")
+        } else if (location.mode.startsWith(mode1) || location.mode.startsWith(mode2) || mode3 == null || location.mode.startsWith(mode3)) {
+            log.info("Thermostat has been working for a while heating; turn on AUX heaters")
+            heaters.on()
+        } else {
+            log.info("Thermostat has been working for a while heating, but mode is away; ignore the problem")
+        }
+        state.latestTurnOnAuxHeaters = null
+	}
 }
 
 def temperatureHandler(evt)
@@ -152,7 +156,7 @@ private handleHelperHeaters() {
             heaters.on()
         } else if ( tempDistance <= 0.0 && heaters.first().currentValue("switch") == "on") {
             log.info "Switching helper heaters off"
-            unschedule(turnOnAuxHeaters)
+            try {unschedule(turnOnAuxHeaters)} catch(e) {log.error "Ignoring error: ${e}"}
             heaters.off()
         }
 	}
@@ -168,6 +172,7 @@ def changedLocationMode(evt)
     log.debug "Now it's ${new Date(now())}"
 	log.debug "changedLocationMode: $evt.value, $settings"
 
+	state.latestDoUpdateTempSettings = now()
 	runIn(30, doUpdateTempSettings)	//give the system a little time to react before checking status
 
 	log.debug "temperature now is: ${thermostat.currentValue("temperature")}"
@@ -177,6 +182,7 @@ def changedLocationMode(evt)
 def doUpdateTempSettings()
 {
 	log.debug "doUpdateTempSettings"
+    state.latestDoUpdateTempSettings = null
     state.latestMode = location.mode
     log.debug "Location mode is ${location.mode}"
 	if (location.mode.startsWith(mode1)) {
@@ -187,6 +193,7 @@ def doUpdateTempSettings()
         if (coolingSetpoint1 && coolingSetpoint1 != "") {
         	log.debug "Scheduling setCoolingSetpoint(${coolingSetpoint1})"
         	state.requestedCoolingSetpoint = coolingSetpoint1
+            state.latestSetCoolingSetpoint = now()
             runIn(60, setCoolingSetpoint)
         }
     } else if (location.mode.startsWith(mode2)) {
@@ -197,6 +204,7 @@ def doUpdateTempSettings()
         if (coolingSetpoint2 && coolingSetpoint2 != "") {
         	log.debug "Scheduling setCoolingSetpoint(${coolingSetpoint2})"
         	state.requestedCoolingSetpoint = coolingSetpoint2
+            state.latestSetCoolingSetpoint = now()
             runIn(60, setCoolingSetpoint)
         }
     } else if (mode3 && location.mode.startsWith(mode3)) {
@@ -207,6 +215,7 @@ def doUpdateTempSettings()
         if (coolingSetpoint3 && coolingSetpoint3 != "") {
         	log.debug "Scheduling setCoolingSetpoint(${coolingSetpoint3})"
         	state.requestedCoolingSetpoint = coolingSetpoint3
+            state.latestSetCoolingSetpoint = now()
             runIn(60, setCoolingSetpoint)
         }
     } else { //away
@@ -217,6 +226,7 @@ def doUpdateTempSettings()
         if (coolingSetpointAway && coolingSetpointAway != "") {
         	log.debug "Scheduling setCoolingSetpoint(${coolingSetpointAway})"
         	state.requestedCoolingSetpoint = coolingSetpointAway
+            state.latestSetCoolingSetpoint = now()
             runIn(60, setCoolingSetpoint)
         }
     }
@@ -225,16 +235,31 @@ def doUpdateTempSettings()
 
 def pollerEvent(evt) {
 	log.debug "[PollerEvent]"
-    log.debug "[PollerEvent] keepAliveLatest == ${state.keepAliveLatest}; now() == ${now()}"
-    if (state.keepAliveLatest && now() - state.keepAliveLatest > 450000) {
+    log.debug "[PollerEvent] keepAliveLatest == ${state.keepAliveLatest}; latestSetCoolingSetpoint == ${state.latestSetCoolingSetpoint}; latestTurnOnAuxHeaters == ${state.latestTurnOnAuxHeaters}; latestDoUpdateTempSettings == ${state.latestDoUpdateTempSettings}; now() == ${now()}"
+    if (state.latestSetCoolingSetpoint && now() - state.latestSetCoolingSetpoint > 100000) {
+    	log.error "Waking up setCoolingSetpoint"
+    	setCoolingSetpoint()
+    }
+    if (state.latestTurnOnAuxHeaters && now() - state.latestTurnOnAuxHeaters > (31 * 60 * 1000)) {
+    	log.error "Waking up turnOnAuxHeaters"
+    	turnOnAuxHeaters()
+    }
+    if (state.latestDoUpdateTempSettings && now() - state.latestDoUpdateTempSettings > 60000) {
+    	log.error "Waking up doUpdateTempSettings"
+    	doUpdateTempSettings()
+    }
+    if (state.keepAliveLatest && now() - state.keepAliveLatest > 360000) {
     	log.error "Waking up timer"
     	keepAlive()
     }
 }
 
 def setCoolingSetpoint() {
-	log.debug "Setting setCoolingSetpoint(${state.requestedCoolingSetpoint})"
-    thermostat.setCoolingSetpoint(state.requestedCoolingSetpoint)
+	if(state.latestSetCoolingSetpoint != null) {
+        state.latestSetCoolingSetpoint = null
+        log.debug "Setting setCoolingSetpoint(${state.requestedCoolingSetpoint})"
+        thermostat.setCoolingSetpoint(state.requestedCoolingSetpoint)
+    }
 }
 
 def appTouch(evt)

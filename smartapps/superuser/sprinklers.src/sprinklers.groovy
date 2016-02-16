@@ -187,7 +187,7 @@ def stopSprinkler1() {
 def startSprinkler2(evt) {
 	if (state.running == true) {
         log.info "Turning on Sprinker 2 for ${time2} minutes"
-	    unschedule(stopSprinkler1)
+	    try {unschedule(stopSprinkler1)} catch(e) {log.error "Ignoring error: ${e}"}
         sprinkler2.on()
         waitForUpdate(sprinkler2, "on")
         def nowTime = now()
@@ -204,7 +204,7 @@ def stopSprinkler2() {
 }
 
 def startSprinkler3(evt) {
-	unschedule(stopSprinkler2)
+	try {unschedule(stopSprinkler2)} catch(e) {log.error "Ignoring error: ${e}"}
 	if (state.running == true && sprinkler3) {
 		log.info "Turning on Sprinker 3 for ${time3} minutes"
         sprinkler3.on()
@@ -231,7 +231,7 @@ def stopSprinkler3() {
 }
 
 def startSprinkler4(evt) {
-	unschedule(stopSprinkler3)
+	try {unschedule(stopSprinkler3)} catch(e) {log.error "Ignoring error: ${e}"}
 	if (state.running == true && sprinkler4) {
 		log.info "Turning on Sprinker 4 for ${time4} minutes"
         sprinkler4.on()
@@ -297,19 +297,19 @@ def globalSwitchOn(evt) {
     if (state.running) {
     	if (sprinkler1.currentSwitch == "on") {
         	log.info "Manual shut down of sprinkler 1"
-            unschedule(stopSprinkler1)
+            try {unschedule(stopSprinkler1)} catch(e) {log.error "Ignoring error: ${e}"}
         	stopSprinkler1()
         } else if (sprinkler2.currentSwitch == "on") {
         	log.info "Manual shut down of sprinkler 2"
-            unschedule(stopSprinkler2)
+            try {unschedule(stopSprinkler2)} catch(e) {log.error "Ignoring error: ${e}"}
 	    	stopSprinkler2()
         } else if (sprinkler3 && sprinkler3.currentSwitch == "on") {
         	log.info "Manual shut down of sprinkler 3"
-            unschedule(stopSprinkler3)
+            try {unschedule(stopSprinkler3)} catch(e) {log.error "Ignoring error: ${e}"}
 	    	stopSprinkler3()
         } else if (sprinkler4 && sprinkler4.currentSwitch == "on") {
         	log.info "Manual shut down of sprinkler 4"
-            unschedule(stopSprinkler4)
+            try {unschedule(stopSprinkler4)} catch(e) {log.error "Ignoring error: ${e}"}
         	stopSprinkler4()
         } else {
         	log.error "State is flagged as running, but no switches are reported on; timing issue?"

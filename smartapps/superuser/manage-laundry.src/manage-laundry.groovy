@@ -83,7 +83,7 @@ def modeChangeHandler(evt)
 	if (evt.value == awayMode) {
 		log.debug "[Manage Laundry] Location mode is away; shut down ${if(!heatInAwayMode) "everything" else "lights (not heat)"}"
         state.manualOn = false
-    	unschedule(turnOffLight)
+    	try {unschedule(turnOffLight)} catch(e) {log.error "Ignoring error: ${e}"}
         lightSwitch.off()
         if (!heatInAwayMode) heaterOutlet.off()
     }
@@ -105,7 +105,7 @@ private updateState()
     if (location.mode == awayMode && !state.manualOn) {
 		log.debug "[Manage Laundry] Location mode is away; shut down ${if(!heatInAwayMode) "everything" else "lights (not heat)"}"
         state.timerLatest = null
-    	unschedule(turnOffLight)
+    	try {unschedule(turnOffLight)} catch(e) {log.error "Ignoring error: ${e}"}
         lightSwitch.off()
         if (!heatInAwayMode) heaterOutlet.off()
     }
@@ -132,7 +132,7 @@ def motionHandler(evt)
     	if (evt.value == "active") {
             log.debug "[Manage Laundry] Motion is active"
             state.timerLatest = null
-            unschedule(turnOffLight)
+            try {unschedule(turnOffLight)} catch(e) {log.error "Ignoring error: ${e}"}
             if (lightSwitch.currentValue("switch") == "off") {
                 log.debug "[Manage Laundry] Turn lights on"
                 if (state.manualOffAt && (now() - state.manualOffAt) < 60 * 1000) {
@@ -143,7 +143,7 @@ def motionHandler(evt)
             }
         } else if (evt.value == "inactive") {
             log.debug "[Manage Laundry] Motion is inactive"
-            unschedule(turnOffLight)
+            try {unschedule(turnOffLight)} catch(e) {log.error "Ignoring error: ${e}"}
             state.timerLatest = now()
             runIn(minutes * 60, turnOffLight)
         }
@@ -159,10 +159,10 @@ def lightSwitchHandler(evt)
             	state.manualOffAt = now()
             }
             state.timerLatest = null
-            unschedule(turnOffLight)
+            try {unschedule(turnOffLight)} catch(e) {log.error "Ignoring error: ${e}"}
         } else {
             log.debug "[Manage Laundry] Light switch is on"
-            unschedule(turnOffLight)
+            try {unschedule(turnOffLight)} catch(e) {log.error "Ignoring error: ${e}"}
             state.timerLatest = now()
             runIn(minutes * 60, turnOffLight)
         }
