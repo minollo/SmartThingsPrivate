@@ -21,6 +21,7 @@ preferences {
     	input "pollerDevice", "capability.battery", required: false
     }
 	section ("Day modes...") {
+        input "awayMode", "mode", title: "Away mode?", required: true
 		input "dayMode", "mode", title: "Day mode?", required: true
 		input "nightMode", "mode", title: "Night mode?", required: true
 		input "sleepMode", "mode", title: "Sleep mode?", required: false
@@ -69,8 +70,22 @@ def pollerEvent(evt) {
 def timeMonitor() {
 	log.debug "[Night&Day2] timeMonitor request..."
     runIn(300, timeMonitor)
-    state.keepAliveLatest = now()
-    processCurrentMode(location.mode)
+	state.keepAliveLatest = now()
+    if (state.latestMode != awayMode) {	//check and process current mode only if latest set mode was not away
+        if (state.latestMode != location.mode) {
+            if (state.modifiedLatestMode != location.mode) {
+                state.modifiedLatestMode = location.mode
+                log.warn "Mode seems to have changed (to ${location.mode}); but let's wait one more polling cycle..."
+            } else {
+                log.warn "Mode has changed to ${location.mode} (checked twice); processing change"
+                processCurrentMode(location.currentMode.name)
+            }
+        } else {
+            processCurrentMode(location.mode)
+        }
+	} else {
+    	state.modifiedLatestMode = null
+    }
 }
 
 
@@ -82,13 +97,15 @@ def modeChange(evt) {
 
 def verifyCurrentMode() {
 	log.debug "[Night&Day2] verifyCurrentMode request..."
-    processCurrentMode(location.mode)
+    processCurrentMode(location.currentMode.name)
 }
 
 private processCurrentMode(oldMode) {
 	log.debug "[Night&Day2] processCurrentMode(${oldMode})..."
     log.debug "[Night&Day2] now: ${now()}, state: ${state}"
     log.debug "SleepAlarmMode == ${sleepAlarmMode}"
+    state.modifiedLatestMode = null
+	state.latestMode = oldMode
 	getCurrentDateInfo()
     if (oldMode == dayMode || oldMode == nightMode || (sleepMode && oldMode == sleepMode) || (sleepAlarmMode && oldMode == sleepAlarmMode)) {
         def nowTime = now()
@@ -146,7 +163,8 @@ def changeMode(oldMode,newMode) {
 	if (oldMode == dayMode || oldMode == nightMode || (sleepMode && oldMode == sleepMode) || (sleepAlarmMode && oldMode == sleepAlarmMode)) {
         if (newMode) {	// && oldMode != newMode) {
             if (location.modes?.find{it.name == newMode}) {
-                setLocationMode(newMode)
+            	state.latestMode = newMode
+                location.setMode(newMode)
                 log.debug "[Night&Day2] has changed the mode to '${newMode}'"
             }
             else {

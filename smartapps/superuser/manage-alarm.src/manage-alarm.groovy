@@ -17,13 +17,15 @@ definition(
 )
 
 preferences {
+	section("Poller device...") {
+    	input "pollerDevice", "capability.battery", required: false
+    }
 	section("Settings") {
 		input "alarm", "capability.Alarm", title: "Alarm device"
 		input "awayMode", "mode", title: "Away mode"
 	}
 	section("Night management") {
 		input "sleepAlarmMode", "mode", title: "Sleep with alarm mode", required: false
-		input "people", "capability.presenceSensor", title: "These sensors must be present", multiple: true, required: false
 	}
 }
 
@@ -41,9 +43,21 @@ def updated() {
 }
 
 def initialize() {
+    if (pollerDevice) subscribe(pollerDevice, "battery", pollerEvent)
     subscribe(location, modeChangeHandler)
-	subscribe(people, "presence", presenceHandler)
-    updateState(location.mode)
+    updateState(location.currentMode.name)
+}
+
+def pollerEvent(evt) {
+    log.debug "[PollerEvent] checkAlarmCommand==${state.checkAlarmCommandLatest}; poll==${state.pollLatest}; now()==${now()}"
+    if (state.checkAlarmCommandLatest && (now() - state.checkAlarmCommandLatest) > 660 * 1000) {
+        log.error "Checking Alarm Command (timer was asleep?)"
+        checkAlarmCommand()
+    }
+    if (state.pollLatest && (now() - state.pollLatest) > 180 * 1000) {
+        log.error "Polling (timer was asleep?)"
+        poll()
+    }
 }
 
 def modeChangeHandler(evt) {
@@ -57,63 +71,45 @@ private updateState(mode) {
     	if (alarm.currentValue("enabled") == "true") {
             alarm.alarmOn()
             state.requested = "away"
-            runIn(400, checkAlarmCommand)
+            state.checkAlarmCommandLatest = now()
+            runIn(600, checkAlarmCommand)
         } else {
         	log.info("Ignoring mode change; alarm is disabled")
         }
-    } else if (sleepAlarmMode && mode == sleepAlarmMode && everyoneIsPresent()) {
+    } else if (sleepAlarmMode && mode == sleepAlarmMode) {
     	if (alarm.currentValue("enabled") == "true") {
             alarm.alarmStay()
             state.requested = "stay"
-            runIn(400, checkAlarmCommand)
+            state.checkAlarmCommandLatest = now()
+            runIn(600, checkAlarmCommand)
         } else {
         	log.info("Ignoring mode change; alarm is disabled")
         }
     } else {
     	alarm.alarmOff()
         state.requested = "off"
-        runIn(400, checkAlarmCommand)
+        state.checkAlarmCommandLatest = now()
+        runIn(1200, checkAlarmCommand)
     }
-    runIn(60, poll)
+    state.pollLatest = now()
+    runIn(120, poll)
 }
 
 def checkAlarmCommand() {
 	if (alarm.currentValue("alarmStatus") != state.requested) {
-    	def msg = "Alarm ${alarm.displayName} switch to ${state.requested} has failed (alarm is ${alarm.currentValue("alarmStatus")})"
+    	def msg = "Alarm ${alarm.displayName} switch to ${state.requested} is failing (alarm is ${alarm.currentValue("alarmStatus")})"
         log.error msg
     	sendNotification(msg)
     } else {
     	def msg = "Alarm ${alarm.displayName} successfully switched or confirmed to ${state.requested}"
         log.info msg
     }
+    state.checkAlarmCommandLatest = null
 }
 
 def poll() {
 	log.debug "poll"
 	alarm.poll()
+    state.pollLatest = null
 }
 
-def presenceHandler(evt)
-{
-	log.debug "presenceHandler: $evt.value"
-	if (evt.value == "present" && location.mode == sleepAlarmMode) {
-		runIn(300, "updatePresence")
-	}
-}
-
-def updatePresence() {
-    updateState(location.mode)
-}
-
-private everyoneIsPresent()
-{
-	def result = true
-	for (person in people) {
-		if (person.currentPresence != "present") {
-			result = false
-			break
-		}
-	}
-	log.debug "everyoneIsPresent: $result"
-	return result
-}

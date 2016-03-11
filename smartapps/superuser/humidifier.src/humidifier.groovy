@@ -18,6 +18,7 @@ definition(
 preferences {
 	section("Choose a humidity sensor... "){
 		input "sensor", "capability.relativeHumidityMeasurement", title: "Sensor"
+		input "weather", "capability.relativeHumidityMeasurement", title: "Weather Station", required: false
 		input "humiditySetpoint", "number", title: "Humidity Target"
 		input "awayMode", "mode", title: "Away mode", required: false
 	}
@@ -33,6 +34,9 @@ def installed()
 {
 	subscribe(sensor, "humidity", humidityHandler)
     subscribe(location, modeChangeHandler)
+    if (weather != null) {
+		subscribe(weather, "humidity", weatherHumidityHandler)
+    }
     if (thermostat != null) {
         subscribe(thermostat, "heatingSetpoint", heatingSetpointHandler)
         subscribe(thermostat, "temperature", temperatureHandler)
@@ -93,6 +97,13 @@ def humidityHandler(evt) {
 		handleHumidifiers(thermostat?thermostat.currentValue("heatingSetpoint"):0, thermostat?thermostat.currentValue("temperature"):0, evt.value, thermostat?thermostat.currentValue("thermostatOperatingState"):null, location.mode)
     }
     if (thermostat != null) thermostat.poll()
+}
+
+def weatherHumidityHandler(evt) {
+	log.debug "Weather humidity event received: ${evt}"
+    if (evt.value) {
+		handleHumidifiers(thermostat?thermostat.currentValue("heatingSetpoint"):0, thermostat?thermostat.currentValue("temperature"):0, sensor.currentValue("humidity"), thermostat?thermostat.currentValue("thermostatOperatingState"):null, location.mode)
+    }
 }
 
 private handleHumidifiers(setpoint, temperature, humidity, operatingState, locMode) {

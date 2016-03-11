@@ -118,11 +118,12 @@ def operatingStateHandler(evt)
 }
 
 def turnOnAuxHeaters() {
+	def mode = location.currentMode.name
 	if (state.latestTurnOnAuxHeaters != null) {
         log.debug "turnOnAuxHeaters; thermostatOperatingState is ${thermostat.currentValue("thermostatOperatingState")}"
         if (thermostat.currentValue("thermostatOperatingState") != "heating") {
             log.info("Ignoring request to turn on aux heaters, as thermostat is not heating")
-        } else if (location.mode.startsWith(mode1) || location.mode.startsWith(mode2) || mode3 == null || location.mode.startsWith(mode3)) {
+        } else if (mode.startsWith(mode1) || mode.startsWith(mode2) || mode3 == null || mode.startsWith(mode3)) {
             log.info("Thermostat has been working for a while heating; turn on AUX heaters")
             heaters.on()
         } else {
@@ -171,7 +172,7 @@ def changedLocationMode(evt)
 {
     log.debug "Now it's ${new Date(now())}"
 	log.debug "changedLocationMode: $evt.value, $settings"
-
+	state.modifiedLatestMode = null
 	state.latestDoUpdateTempSettings = now()
 	runIn(30, doUpdateTempSettings)	//give the system a little time to react before checking status
 
@@ -181,11 +182,13 @@ def changedLocationMode(evt)
 
 def doUpdateTempSettings()
 {
+	def mode = location.currentMode.name
 	log.debug "doUpdateTempSettings"
     state.latestDoUpdateTempSettings = null
-    state.latestMode = location.mode
-    log.debug "Location mode is ${location.mode}"
-	if (location.mode.startsWith(mode1)) {
+    state.latestMode = mode
+    state.modifiedLatestMode = null
+    log.debug "Location mode is ${mode}"
+	if (mode.startsWith(mode1)) {
     	if (heatingSetpoint1 && heatingSetpoint1 != "") {
             log.debug "Setting setHeatingSetpoint(${heatingSetpoint1})"
             thermostat.setHeatingSetpoint(heatingSetpoint1)
@@ -196,7 +199,7 @@ def doUpdateTempSettings()
             state.latestSetCoolingSetpoint = now()
             runIn(60, setCoolingSetpoint)
         }
-    } else if (location.mode.startsWith(mode2)) {
+    } else if (mode.startsWith(mode2)) {
     	if (heatingSetpoint2 && heatingSetpoint2 != "") {
             log.debug "Setting setHeatingSetpoint(${heatingSetpoint2})"
             thermostat.setHeatingSetpoint(heatingSetpoint2)
@@ -207,7 +210,7 @@ def doUpdateTempSettings()
             state.latestSetCoolingSetpoint = now()
             runIn(60, setCoolingSetpoint)
         }
-    } else if (mode3 && location.mode.startsWith(mode3)) {
+    } else if (mode3 && mode.startsWith(mode3)) {
     	if (heatingSetpoint3 && heatingSetpoint3 != "") {
             log.debug "Setting setHeatingSetpoint(${heatingSetpoint3})"
             thermostat.setHeatingSetpoint(heatingSetpoint3)
@@ -276,12 +279,22 @@ def keepAlive()
     state.keepAliveLatest = now()
     log.debug "[Polling] keepAliveLatest == ${state.keepAliveLatest}; now() == ${now()}"
     thermostat.poll()
-    if (!state.latestMode || state.latestMode != location.mode) {
-		log.debug "[Main Thermostat]: Mode has changed; update settings"
-    	doUpdateTempSettings()
-    } else {
-    	state.latestMode = location.mode
-    }
+    if (state.latestMode == null || state.latestMode == mode1 || state.latestMode == mode2 || state.latestMode == mode3) {	//Check current mode only if latest set state is not away
+        if (!state.latestMode || state.latestMode != location.currentMode.name) {
+            if (state.modifiedLatestMode == location.mode) {
+                log.warn "Mode has changed to ${location.mode} (checked twice); update settings"
+                doUpdateTempSettings()
+            } else {
+                state.modifiedLatestMode = location.mode
+                log.warn "Mode seems to have changed (to ${location.mode}); but let's wait one more polling cycle..."
+            }
+        } else {
+            state.latestMode = location.currentMode.name
+            state.modifiedLatestMode = null
+        }
+ 	} else {
+		state.modifiedLatestMode = null
+	}
 }
 
 // catchall

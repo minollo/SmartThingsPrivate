@@ -64,7 +64,7 @@ def initialize() {
     subscribe(virtualSwitch, "switch", virtualSwitchHandler)
 	subscribe(app, appTouch)
     if (pollerDevice) subscribe(pollerDevice, "battery", pollerEvent)
-	updateMode(location.mode)
+	updateMode(location.currentMode.name)
 }
 
 def pollerEvent(evt) {
@@ -187,7 +187,7 @@ def activateCameras() {
     enableCamera(camera1)
     enableCamera(camera2)
     enableCamera(camera3)
-    if (location.mode == awayMode) {	//enable motion alerts only when in away mode
+    if (location.currentMode.name == awayMode) {	//enable motion alerts only when in away mode
         enableMotion(camera1)
         enableMotion(camera2)
         enableMotion(camera3)

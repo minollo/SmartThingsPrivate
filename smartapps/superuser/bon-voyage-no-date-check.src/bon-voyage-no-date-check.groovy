@@ -43,14 +43,14 @@ preferences {
 
 def installed() {
 	log.debug "Installed with settings: ${settings}"
-	log.debug "Current mode = ${location.mode}, people = ${people.collect{it.label + ': ' + it.currentPresence}}"
+	log.debug "Current mode = ${location.currentMode.name}, people = ${people.collect{it.label + ': ' + it.currentPresence}}"
 	subscribe(people, "presence", presence)
     initialize()
 }
 
 def updated() {
 	log.debug "Updated with settings: ${settings}"
-	log.debug "Current mode = ${location.mode}, people = ${people.collect{it.label + ': ' + it.currentPresence}}"
+	log.debug "Current mode = ${location.currentMode.name}, people = ${people.collect{it.label + ': ' + it.currentPresence}}"
 	unsubscribe()
     unschedule()
 	subscribe(people, "presence", presence)
@@ -61,7 +61,7 @@ def presence(evt)
 {
 	log.debug "evt.name: $evt.value"
 	if (evt.value == "not present") {
-		if (location.mode != awayMode) {
+		if (location.currentMode.name != awayMode) {
 			log.debug "checking if everyone is away"
 			if (everyoneIsAway()) {
 				log.debug "starting sequence"
@@ -78,8 +78,8 @@ def presence(evt)
 		log.debug "canceling"
 		state.presenceChangeTime = null
 		unschedule("takeAction")
-        if (location.mode == awayMode) {
-        	setLocationMode(backMode)
+        if (location.currentMode.name == awayMode) {
+        	location.setMode(backMode)
         }
 	}
 }
@@ -95,19 +95,19 @@ def takeAction()
 	if (phone) {
 		sendSms(phone, message)
 	}
-	setLocationMode(awayMode)
+	location.setMode(awayMode)
 }
 
 private initialize()
 {
     if (pollerDevice) subscribe(pollerDevice, "battery", pollerEvent)
 	if (everyoneIsAway()) {
-    	if (location.mode != awayMode) {
-    		setLocationMode(awayMode);
+    	if (location.currentMode.name != awayMode) {
+    		location.setMode(awayMode);
         }
     } else {
-    	if (location.mode == awayMode) {
-    		setLocationMode(backMode);
+    	if (location.currentMode.name == awayMode) {
+    		location.setMode(backMode);
         }
    	}
 }
