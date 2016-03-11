@@ -70,13 +70,13 @@ def initialize() {
     subscribe(alarms, "alarmStatus", handleAlarmStatusEvent)
     if (pollerDevice) subscribe(pollerDevice, "battery", pollerEvent)
 	subscribe(app, appTouch)
-    runIn(300, processQueue)
+    runIn(180, processQueue)
 //    atomicState.queue = ""
 }
 
 def pollerEvent(evt) {
 	log.debug "[PollerEvent] keepAliveLatest == ${atomicState.keepAliveLatest}; now == ${now()}"
-    if (atomicState.keepAliveLatest && now() - atomicState.keepAliveLatest > 330000) {
+    if (atomicState.keepAliveLatest && now() - atomicState.keepAliveLatest > 200000) {
     	log.error "Waking up timer"
     	processQueue()
     }
@@ -131,7 +131,7 @@ private queueValue(evt, Closure convert) {
 }
 
 def processQueue() {
-    runIn(300, processQueue)
+    runIn(180, processQueue)
     atomicState.keepAliveLatest = now()
 	def url = "${appSettings.serverURL}/write?db=${appSettings.database}&u=${appSettings.user}&p=${appSettings.pwd}"
 //    log.debug "URL: ${url}; Body: ${atomicState.queue}"
@@ -150,10 +150,10 @@ def processQueue() {
             }
         } catch(e) {
         	if (e.toString().contains("groovyx.net.http.ResponseParseException")) {
-            	log.warn "Error parsing return value: \"${e}\""
+            	log.warn "Error parsing return value: \"${e.getMessage}\""
                 atomicState.queue = ""
             } else {
-            	log.error "Error sending items: \"${e}\""
+            	log.error "Error sending items: \"${e.getMessage()}\""
             }
 		}
     }
