@@ -257,7 +257,10 @@ def zwaveEvent(physicalgraph.zwave.commands.thermostatoperatingstatev1.Thermosta
 			map.value = "vent economizer"
 			break
 	}
-	map.name = "thermostatOperatingState"
+    if (map.value != null)
+    	map.name = "thermostatOperatingState"
+    else
+    	log.warning "Bad ThermostatOperatingStateReport command: ${cmd}"
 	map
 }
 
