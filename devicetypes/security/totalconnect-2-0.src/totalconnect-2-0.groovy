@@ -82,6 +82,7 @@ def alarmOn() {
 	log.debug "alarmOn() - enabled == ${enabled}"
 	def currentStatus = device.currentValue("alarmStatus")
     if (enabled == "true") {
+    	state.latestRequestedStatus = "away"
     	if (currentStatus == "off") {
             def sessionID = getSession(TCusername, TCpassword)
             if (sessionID) {
@@ -109,6 +110,7 @@ def alarmStay() {
 	def enabled = device.currentValue("enabled")
 	log.debug "alarmOn() - enabled == ${enabled}"
     if (enabled == "true") {
+    	state.latestRequestedStatus = "stay"
 		def currentStatus = device.currentValue("alarmStatus")
       	if (currentStatus == "off") {
             def sessionID = getSession(TCusername, TCpassword)
@@ -135,6 +137,7 @@ def alarmStay() {
 
 def alarmOff() {
 	log.debug "alarmOff()"
+	state.latestRequestedStatus = "off"
 	def sessionID = getSession(TCusername, TCpassword)
     if (sessionID) {
 	    def sessionDetails = getSessionDetails(sessionID, TClocation)
@@ -393,7 +396,8 @@ private logOut(sessionID) {
 }
 
 def poll() {
-	def sessionID = getSession(TCusername, TCpassword)
+	log.debug "Poll: latestRequestedStatus == ${state.latestRequestedStatus}"
+    def sessionID = getSession(TCusername, TCpassword)
     if (sessionID) {
 	    def sessionDetails = getSessionDetails(sessionID, TClocation)
     	def locationID = sessionDetails[0]
@@ -403,6 +407,24 @@ def poll() {
        		def status = getArmedStatus(sessionID, locationID)
 	        sendEvent(name: "alarmStatus", value: status[0])
 	        sendEvent(name: "bypassStatus", value: status[1])
+            log.debug "Current alarmStatus == ${status[0]}"
+            if(state.latestRequestedStatus != null && state.latestRequestedStatus != status[0]) {
+            	if(state.latestRequestedStatus == "away") {
+                	log.warn "Requesting state change to away again..."
+                	alarmOn()
+                } else if (state.latestRequestedStatus == "stay") {
+                	log.warn "Requesting state change to stay again..."
+                	alarmStay()
+                } else if (state.latestRequestedStatus == "off") {
+                	log.warn "Requesting state change to off again..."
+                	alarmOff()
+                } else {
+                	log.error "Unknown state.latestRequestedStatus value"
+                }
+            } else {
+            	log.debug "Resetting state.latestRequestedStatus"
+            	state.latestRequestedStatus = null
+            }
         } else {
         	state.sessionID = null
         }
