@@ -66,7 +66,10 @@ def parse(String description) {
 		result = [result, response(zwave.basicV1.basicGet())]
 		log.debug "Was hailed: requesting state update"
 	} else {
-		log.debug "Parse returned ${result?.descriptionText}"
+    	if (result != null) 
+			log.debug "Parse returned ${result}"
+        else
+        	log.debug "Parse returned no result for command ${description}"
 	}
 	return result
 }
@@ -98,6 +101,7 @@ def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv2.ManufacturerS
 	if (state.manufacturer != cmd.manufacturerName) {
 		updateDataValue("manufacturer", cmd.manufacturerName)
 	}
+    [:]
 }
 
 def zwaveEvent(physicalgraph.zwave.Command cmd) {

@@ -124,14 +124,12 @@ def zwaveEvent(physicalgraph.zwave.commands.batteryv1.BatteryReport cmd) {
 	log.debug "BatteryReport"
 	def nowTime = new Date().time
 	state.lastBatteryQuery = nowTime
-	def map = [:]
+	def map = [name: "battery", isStateChange: true]
 	if (cmd.batteryLevel == 0xFF) {
-		map.name = "battery"
 		map.value = 1
 		map.descriptionText = "${device.displayName} has a low battery"
 		map.displayed = true
 	} else {
-		map.name = "battery"
 		map.value = cmd.batteryLevel > 0 ? cmd.batteryLevel.toString() : 1
 		map.unit = "%"
 		map.displayed = false
@@ -151,6 +149,7 @@ def configure()
 
 def poll() {
 	checkResponsiveness()
+    getBattery()
 }
 
 private getBattery() {

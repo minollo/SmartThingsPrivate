@@ -360,6 +360,8 @@ def zwaveEvent(physicalgraph.zwave.Command cmd) {
 def poll() {
 	checkResponsiveness()
 	delayBetween([
+//        zwave.configurationV1.configurationSet(configurationValue: [1], parameterNumber: 1, size: 1).format(),
+//        zwave.configurationV1.configurationGet(parameterNumber: 1).format(),
 		zwave.sensorMultilevelV3.sensorMultilevelGet().format(), // current temperature
     	zwave.multiChannelV3.multiInstanceCmdEncap(instance: 2).encapsulate(zwave.sensorMultilevelV3.sensorMultilevelGet()).format(),	//current RH
 		zwave.thermostatSetpointV1.thermostatSetpointGet(setpointType: 1).format(),

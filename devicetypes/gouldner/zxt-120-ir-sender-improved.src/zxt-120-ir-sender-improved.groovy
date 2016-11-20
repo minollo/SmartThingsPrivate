@@ -54,6 +54,8 @@ metadata {
         // Commands that this device-type exposes for controlling the ZXT-120 directly
         command "switchModeOff"
         command "switchModeOn"
+        command "forceModeOn"
+        command "forceModeOff"
         command "switchModeHeat"
         command "switchModeCool"
         command "switchModeDry"
@@ -157,6 +159,14 @@ metadata {
         // Power On Mode tile
         standardTile("on", "device.thermostatMode", inactiveLabel: false) {
             state "on", action:"switchModeOn", backgroundColor:"#92C081", icon: "st.thermostat.heating-cooling-on", label: "On"
+        }
+        // Force Off Mode tile
+        standardTile("Foff", "device.thermostatMode", inactiveLabel: false) {
+            state "off", action:"forceModeOff", backgroundColor:"#92C081", icon: "st.thermostat.heating-cooling-off", label: "Force!"
+        }
+        // Force On Mode tile
+        standardTile("Fon", "device.thermostatMode", inactiveLabel: false) {
+            state "on", action:"forceModeOn", backgroundColor:"#92C081", icon: "st.thermostat.heating-cooling-on", label: "Force!"
         }
         // Cool Mode tile
         standardTile("cool", "device.thermostatMode", inactiveLabel: false) {
@@ -298,7 +308,7 @@ metadata {
                  "thermostatMode", "fanMode", "swingMode",
                  "cool", "heat",
                  "reportedCoolingSetpoint","on","off","reportedHeatingSetpoint",
-                 "fanModeLow","fanModeMed","fanModeHigh",
+                 "Fon","Foff","fanModeLow","fanModeMed","fanModeHigh",
                  "fanModeAuto", "swingModeOn", "swingModeOff",
                  "heatingSetpoint", "heatSliderControl",
                  "coolingSetpoint", "coolSliderControl",
@@ -464,12 +474,11 @@ def zwaveEvent(physicalgraph.zwave.commands.sensormultilevelv3.SensorMultilevelR
                 map.value = value
                 map.unit = getTemperatureScale()
                 map.name = "temperature"
-                map.isStateChange = true
                 // Send event to set ShortName + Temp tile
                 def shortNameVal = shortName == null ? "ZXT-120" : shortName
                 def tempName = shortNameVal + " " + map.value + "°"
                 log.debug "Sensor Reporting temperatureName $tempName"
-                sendEvent("name":"temperatureName", "value":tempName)
+                sendEvent("name":"temperatureName", "value":tempName, "isStateChange":true)
             }
             break;
         default:
@@ -1064,6 +1073,16 @@ def off() {
 def on() {
     log.debug "${device.name} received on request"
     switchModeOn()
+}
+
+//forceModeOn
+def forceModeOn() {
+	setThermostatMode("on")
+}
+
+//forceModeOff
+def forceModeOff() {
+	setThermostatMode("off")
 }
 
 // switchModeCommands

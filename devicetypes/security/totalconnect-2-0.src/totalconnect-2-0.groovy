@@ -99,7 +99,7 @@ def alarmOn() {
                 }
             }
     	} else {
-        	log.warning "Alarm is not off; ignoring alarmOn()"
+        	log.warn "Alarm is not off; ignoring alarmOn()"
         }
 	} else {
     	log.debug "Ignoring command"
@@ -128,7 +128,7 @@ def alarmStay() {
                 }
             }
     	} else {
-        	log.warning "Alarm is not off; ignoring alarmStay()"
+        	log.warn "Alarm is not off; ignoring alarmStay()"
         }
 	} else {
     	log.debug "Ignoring command"
@@ -408,23 +408,28 @@ def poll() {
 	        sendEvent(name: "alarmStatus", value: status[0])
 	        sendEvent(name: "bypassStatus", value: status[1])
             log.debug "Current alarmStatus == ${status[0]}"
-            if(state.latestRequestedStatus != null && state.latestRequestedStatus != status[0]) {
-            	if(state.latestRequestedStatus == "away") {
-                	log.warn "Requesting state change to away again..."
-                	alarmOn()
-                } else if (state.latestRequestedStatus == "stay") {
-                	log.warn "Requesting state change to stay again..."
-                	alarmStay()
-                } else if (state.latestRequestedStatus == "off") {
-                	log.warn "Requesting state change to off again..."
-                	alarmOff()
+            if(status[0] != "arming" && status[0] != "disarming") {	// if in transition state, just wait for the next poll
+                if(state.latestRequestedStatus != null && state.latestRequestedStatus != status[0]) {
+		        	state.sessionID = null
+                    if(state.latestRequestedStatus == "away") {
+                        log.warn "Requesting state change to away again..."
+                        alarmOn()
+                    } else if (state.latestRequestedStatus == "stay") {
+                        log.warn "Requesting state change to stay again..."
+                        alarmStay()
+                    } else if (state.latestRequestedStatus == "off") {
+                        log.warn "Requesting state change to off again..."
+                        alarmOff()
+                    } else {
+                        log.error "Unknown state.latestRequestedStatus value"
+                    }
                 } else {
-                	log.error "Unknown state.latestRequestedStatus value"
+                	if (state.latestRequestedStatus != null) {
+                        log.debug "Resetting state.latestRequestedStatus"
+                        state.latestRequestedStatus = null
+					}
                 }
-            } else {
-            	log.debug "Resetting state.latestRequestedStatus"
-            	state.latestRequestedStatus = null
-            }
+			}
         } else {
         	state.sessionID = null
         }
